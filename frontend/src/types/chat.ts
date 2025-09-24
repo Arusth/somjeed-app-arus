@@ -26,6 +26,20 @@ export interface ChatRequest {
   sessionId?: string;
 }
 
+export interface WeatherResponse {
+  condition: string;
+  description: string;
+  temperature: number;
+  location: string;
+}
+
+export interface GreetingResponse {
+  message: string;
+  timeOfDay: string;
+  weatherCondition: string;
+  timestamp: string;
+}
+
 // Animation states for smooth transitions
 export type AnimationState = 'entering' | 'entered' | 'exiting' | 'exited';
 

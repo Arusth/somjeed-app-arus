@@ -1,32 +1,29 @@
 package com.chatbotapp.dto;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
 import java.time.LocalDateTime;
 
+/**
+ * ChatResponse DTO for chat message responses
+ * Contains message content and timestamp
+ */
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class ChatResponse {
     
+    /**
+     * Bot response message
+     */
     private String message;
+    
+    /**
+     * Response timestamp
+     */
     private LocalDateTime timestamp;
-
-    public ChatResponse() {}
-
-    public ChatResponse(String message, LocalDateTime timestamp) {
-        this.message = message;
-        this.timestamp = timestamp;
-    }
-
-    public String getMessage() {
-        return message;
-    }
-
-    public void setMessage(String message) {
-        this.message = message;
-    }
-
-    public LocalDateTime getTimestamp() {
-        return timestamp;
-    }
-
-    public void setTimestamp(LocalDateTime timestamp) {
-        this.timestamp = timestamp;
-    }
 }

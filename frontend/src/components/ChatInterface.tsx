@@ -1,10 +1,11 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react';
-import { sendMessage } from '@/services/chatService';
+import { chatService } from '@/services/chatService';
 import MessageBubble from './MessageBubble';
 import MessageInput from './MessageInput';
 import LoadingIndicator from './LoadingIndicator';
+import GreetingMessage from './GreetingMessage';
 import type { ChatMessage, BotProfile } from '@/types/chat';
 
 interface Message {
@@ -15,27 +16,9 @@ interface Message {
 }
 
 export default function ChatInterface() {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '1',
-      text: 'Hello! I\'m Somjeed, your friendly chatbot assistant. How can I help you today?',
-      sender: 'bot',
-      timestamp: new Date()
-    },
-    {
-      id: '2',
-      text: 'I can help you with various tasks like answering questions, providing information, or just having a friendly conversation.',
-      sender: 'bot',
-      timestamp: new Date(Date.now() + 1000)
-    },
-    {
-      id: '3',
-      text: 'Feel free to ask me anything! You can scroll through our conversation using the custom scrollbar on the right.',
-      sender: 'bot',
-      timestamp: new Date(Date.now() + 2000)
-    }
-  ]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [showGreeting, setShowGreeting] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Bot profile configuration
@@ -56,6 +39,11 @@ export default function ChatInterface() {
   const handleSendMessage = async (text: string) => {
     if (!text.trim()) return;
 
+    // Hide greeting when first message is sent
+    if (showGreeting) {
+      setShowGreeting(false);
+    }
+
     // Add user message
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -72,7 +60,7 @@ export default function ChatInterface() {
       await new Promise(resolve => setTimeout(resolve, 500));
       
       // Send message to backend
-      const response = await sendMessage(text.trim());
+      const response = await chatService.sendMessage(text.trim());
       
       // Add bot response with animation delay
       setTimeout(() => {
@@ -109,26 +97,30 @@ export default function ChatInterface() {
     <div className="bg-white rounded-lg shadow-lg overflow-hidden transition-all duration-300 ease-in-out hover:shadow-xl">
       {/* Chat Messages */}
       <div className="h-96 overflow-y-auto p-4 space-y-4 scroll-smooth custom-scrollbar scrollbar-thin scrollbar-webkit">
-        {messages.length === 0 ? (
-          <div className="flex items-center justify-center h-full text-gray-500">
-            No messages yet...
-          </div>
-        ) : (
-          messages.map((message, index) => (
-            <div
-              key={message.id}
-              style={{ animationDelay: `${index * 100}ms` }}
-            >
-              <MessageBubble
-                message={message.text}
-                sender={message.sender}
-                timestamp={message.timestamp}
-                botProfile={message.sender === 'bot' ? botProfile : undefined}
-                isAnimated={true}
-              />
-            </div>
-          ))
+        {/* Show greeting message when no conversation has started */}
+        {showGreeting && messages.length === 0 && (
+          <GreetingMessage 
+            botProfile={botProfile}
+            autoFetch={true}
+            className="mb-4"
+          />
         )}
+
+        {/* Show conversation messages */}
+        {messages.map((message, index) => (
+          <div
+            key={message.id}
+            style={{ animationDelay: `${index * 100}ms` }}
+          >
+            <MessageBubble
+              message={message.text}
+              sender={message.sender}
+              timestamp={message.timestamp}
+              botProfile={message.sender === 'bot' ? botProfile : undefined}
+              isAnimated={true}
+            />
+          </div>
+        ))}
         
         {/* Enhanced Loading Indicator */}
         {isLoading && (
