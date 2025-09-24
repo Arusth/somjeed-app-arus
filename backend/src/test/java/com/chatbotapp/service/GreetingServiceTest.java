@@ -1,6 +1,7 @@
 package com.chatbotapp.service;
 
 import com.chatbotapp.dto.GreetingResponse;
+import com.chatbotapp.dto.IntentPrediction;
 import com.chatbotapp.dto.WeatherResponse;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -10,6 +11,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalTime;
+import java.util.Collections;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -24,6 +26,9 @@ class GreetingServiceTest {
 
     @Mock
     private WeatherService weatherService;
+
+    @Mock
+    private IntentPredictionService intentPredictionService;
 
     @InjectMocks
     private GreetingService greetingService;
@@ -139,6 +144,7 @@ class GreetingServiceTest {
             .build();
         
         when(weatherService.getCurrentWeather()).thenReturn(mockWeather);
+        when(intentPredictionService.predictIntents(null)).thenReturn(Collections.emptyList());
 
         // Act
         GreetingResponse greeting = greetingService.generateGreeting();
