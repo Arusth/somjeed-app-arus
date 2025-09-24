@@ -32,7 +32,15 @@ export default function ChatInterface() {
   };
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    setTimeout(() => {
+      if (messagesEndRef.current) {
+        messagesEndRef.current.scrollIntoView({ 
+          behavior: 'smooth',
+          block: 'end',
+          inline: 'nearest'
+        });
+      }
+    }, 100);
   }
 
   useEffect(() => {
@@ -72,6 +80,9 @@ export default function ChatInterface() {
 
     setMessages(prev => [...prev, userMessage]);
     setIsLoading(true);
+    
+    // Scroll to bottom after adding user message
+    setTimeout(() => scrollToBottom(), 50);
 
     try {
       // Simulate a slight delay for better UX
@@ -91,6 +102,8 @@ export default function ChatInterface() {
 
         setMessages(prev => [...prev, botMessage]);
         setIsLoading(false);
+        // Scroll to bottom after adding message
+        setTimeout(() => scrollToBottom(), 100);
       }, 300);
       
     } catch (error) {
@@ -107,14 +120,16 @@ export default function ChatInterface() {
 
         setMessages(prev => [...prev, errorMessage]);
         setIsLoading(false);
+        // Scroll to bottom after adding error message
+        setTimeout(() => scrollToBottom(), 100);
       }, 300);
     }
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-lg overflow-hidden transition-all duration-300 ease-in-out hover:shadow-xl">
+    <div className="bg-white rounded-lg shadow-lg overflow-hidden transition-all duration-300 ease-in-out hover:shadow-xl h-full flex flex-col">
       {/* Chat Messages */}
-      <div className="h-96 overflow-y-auto p-4 space-y-4 scroll-smooth custom-scrollbar scrollbar-thin scrollbar-webkit">
+      <div className="flex-1 overflow-y-auto max-h-[calc(100vh-270px)] p-4 space-y-4 scroll-smooth custom-scrollbar scrollbar-thin scrollbar-webkit min-h-0">
         {/* Show greeting message */}
         {showGreeting && (
           <GreetingMessage 
@@ -166,7 +181,7 @@ export default function ChatInterface() {
       </div>
 
       {/* Message Input */}
-      <div className="border-t border-gray-200 p-4 bg-gray-50 transition-colors duration-200">
+      <div className="flex-shrink-0 border-t border-gray-200 p-4 bg-gray-50 transition-colors duration-200">
         <MessageInput 
           onSendMessage={handleSendMessage} 
           disabled={isLoading} 

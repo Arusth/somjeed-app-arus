@@ -4,9 +4,12 @@ import com.chatbotapp.dto.ChatRequest;
 import com.chatbotapp.dto.ChatResponse;
 import com.chatbotapp.dto.GreetingResponse;
 import com.chatbotapp.dto.IntentPrediction;
+import com.chatbotapp.dto.UserIntent;
 import com.chatbotapp.service.ChatService;
 import com.chatbotapp.service.GreetingService;
 import com.chatbotapp.service.IntentPredictionService;
+import com.chatbotapp.service.IntentRecognitionService;
+import com.chatbotapp.service.UserDataService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -23,11 +26,19 @@ public class ChatController {
     private final ChatService chatService;
     private final GreetingService greetingService;
     private final IntentPredictionService intentPredictionService;
+    private final IntentRecognitionService intentRecognitionService;
+    private final UserDataService userDataService;
 
-    public ChatController(ChatService chatService, GreetingService greetingService, IntentPredictionService intentPredictionService) {
+    public ChatController(ChatService chatService, 
+                         GreetingService greetingService, 
+                         IntentPredictionService intentPredictionService,
+                         IntentRecognitionService intentRecognitionService,
+                         UserDataService userDataService) {
         this.chatService = chatService;
         this.greetingService = greetingService;
         this.intentPredictionService = intentPredictionService;
+        this.intentRecognitionService = intentRecognitionService;
+        this.userDataService = userDataService;
     }
 
     /**
@@ -80,6 +91,18 @@ public class ChatController {
         } else {
             return ResponseEntity.noContent().build();
         }
+    }
+
+    /**
+     * Classify user message intent for testing purposes
+     * 
+     * @param message User message to classify
+     * @return Classified intent with confidence and entities
+     */
+    @GetMapping("/classify")
+    public ResponseEntity<UserIntent> classifyIntent(@RequestParam String message) {
+        UserIntent intent = intentRecognitionService.classifyIntent(message, userDataService.getRandomUserScenario());
+        return ResponseEntity.ok(intent);
     }
 
     /**

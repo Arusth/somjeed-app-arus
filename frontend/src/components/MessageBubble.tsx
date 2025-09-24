@@ -68,9 +68,9 @@ export const MessageBubble: FC<MessageBubbleProps> = ({
           )}
           
           {/* Message Text */}
-          <p className="text-sm leading-relaxed break-words">
+          <div className="text-sm leading-relaxed break-words whitespace-pre-line">
             {message}
-          </p>
+          </div>
           
           {/* Timestamp */}
           <ClientOnly fallback={
