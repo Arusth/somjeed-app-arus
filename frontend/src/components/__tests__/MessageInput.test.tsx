@@ -77,7 +77,7 @@ describe('MessageInput', () => {
     render(<MessageInput onSendMessage={mockOnSendMessage} disabled={true} />)
 
     const input = screen.getByPlaceholderText('Type your message...')
-    const sendButton = screen.getByRole('button', { name: 'Send' })
+    const sendButton = screen.getByRole('button', { name: 'Sending...' })
 
     expect(input).toBeDisabled()
     expect(sendButton).toBeDisabled()
