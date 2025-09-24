@@ -4,13 +4,14 @@ import type { FC } from 'react';
 import { useEffect } from 'react';
 import { useGreeting } from '@/hooks/useGreeting';
 import BotAvatar from './BotAvatar';
-import type { BotProfile } from '@/types/chat';
+import type { BotProfile, IntentPrediction } from '@/types/chat';
 
 interface GreetingMessageProps {
   botProfile?: BotProfile;
-  onGreetingLoaded?: (message: string) => void;
+  onGreetingLoaded?: (greetingData: any) => void;
   autoFetch?: boolean;
   className?: string;
+  userId?: string;
 }
 
 /**
@@ -21,7 +22,8 @@ export const GreetingMessage: FC<GreetingMessageProps> = ({
   botProfile,
   onGreetingLoaded,
   autoFetch = true,
-  className = ''
+  className = '',
+  userId
 }) => {
   const { greeting, isLoading, error, fetchGreeting, clearError } = useGreeting();
 
@@ -37,14 +39,23 @@ export const GreetingMessage: FC<GreetingMessageProps> = ({
   // Auto-fetch greeting on component mount
   useEffect(() => {
     if (autoFetch) {
-      fetchGreeting();
+      fetchGreeting(userId);
     }
-  }, [autoFetch, fetchGreeting]);
+  }, [autoFetch, fetchGreeting, userId]);
+
+  // Handler functions for button clicks
+  const handleRefreshClick = () => {
+    fetchGreeting(userId);
+  };
+
+  const handleTryAgainClick = () => {
+    fetchGreeting(userId);
+  };
 
   // Notify parent when greeting is loaded
   useEffect(() => {
     if (greeting && onGreetingLoaded) {
-      onGreetingLoaded(greeting.message);
+      onGreetingLoaded(greeting);
     }
   }, [greeting, onGreetingLoaded]);
 
@@ -91,7 +102,7 @@ export const GreetingMessage: FC<GreetingMessageProps> = ({
           </p>
           <div className="flex items-center space-x-2 mt-2">
             <button
-              onClick={fetchGreeting}
+              onClick={handleTryAgainClick}
               className="text-xs text-red-600 hover:text-red-800 underline transition-colors"
             >
               Try again
@@ -139,7 +150,7 @@ export const GreetingMessage: FC<GreetingMessageProps> = ({
               </span>
             </div>
             <button
-              onClick={fetchGreeting}
+              onClick={handleRefreshClick}
               className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
               title="Get new greeting"
             >
@@ -167,11 +178,66 @@ export const GreetingMessage: FC<GreetingMessageProps> = ({
           Hello! I'm ready to help you today.
         </p>
         <button
-          onClick={fetchGreeting}
+          onClick={handleRefreshClick}
           className="text-xs text-blue-600 hover:text-blue-800 underline mt-2 transition-colors"
         >
           Get personalized greeting
         </button>
+      </div>
+    </div>
+  );
+};
+
+/**
+ * IntentPredictionCard component displays a predicted intent with suggested actions
+ */
+interface IntentPredictionCardProps {
+  intent: IntentPrediction;
+}
+
+const IntentPredictionCard: FC<IntentPredictionCardProps> = ({ intent }) => {
+  const getPriorityColor = (priority: string) => {
+    switch (priority.toLowerCase()) {
+      case 'high': return 'border-red-200 bg-red-50 text-red-800';
+      case 'medium': return 'border-yellow-200 bg-yellow-50 text-yellow-800';
+      case 'low': return 'border-blue-200 bg-blue-50 text-blue-800';
+      default: return 'border-gray-200 bg-gray-50 text-gray-800';
+    }
+  };
+
+  const getCategoryEmoji = (category: string) => {
+    switch (category.toLowerCase()) {
+      case 'payment': return '💳';
+      case 'balance': return '💰';
+      case 'transaction': return '🔄';
+      default: return '📋';
+    }
+  };
+
+  return (
+    <div className={`border rounded-lg p-3 ${getPriorityColor(intent.priority)} transition-all duration-200 hover:shadow-sm`}>
+      <div className="flex items-start space-x-2">
+        <span className="text-lg">{getCategoryEmoji(intent.category)}</span>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium mb-1">
+            {intent.suggestedMessage}
+          </p>
+          <div className="flex flex-wrap gap-1 mt-2">
+            {intent.suggestedActions.slice(0, 3).map((action, index) => (
+              <button
+                key={index}
+                className="text-xs px-2 py-1 bg-white bg-opacity-70 rounded border border-current hover:bg-opacity-100 transition-colors"
+              >
+                {action}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center justify-between mt-2">
+            <span className="text-xs opacity-75">
+              {intent.priority} Priority • {Math.round(intent.confidence * 100)}% confidence
+            </span>
+          </div>
+        </div>
       </div>
     </div>
   );

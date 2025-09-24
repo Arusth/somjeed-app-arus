@@ -3,8 +3,10 @@ package com.chatbotapp.controller;
 import com.chatbotapp.dto.ChatRequest;
 import com.chatbotapp.dto.ChatResponse;
 import com.chatbotapp.dto.GreetingResponse;
+import com.chatbotapp.dto.IntentPrediction;
 import com.chatbotapp.service.ChatService;
 import com.chatbotapp.service.GreetingService;
+import com.chatbotapp.service.IntentPredictionService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -20,10 +22,12 @@ public class ChatController {
 
     private final ChatService chatService;
     private final GreetingService greetingService;
+    private final IntentPredictionService intentPredictionService;
 
-    public ChatController(ChatService chatService, GreetingService greetingService) {
+    public ChatController(ChatService chatService, GreetingService greetingService, IntentPredictionService intentPredictionService) {
         this.chatService = chatService;
         this.greetingService = greetingService;
+        this.intentPredictionService = intentPredictionService;
     }
 
     /**
@@ -41,12 +45,41 @@ public class ChatController {
     /**
      * Get contextual greeting based on time and weather
      * 
-     * @return GreetingResponse with personalized greeting
+     * @param userId Optional user ID for personalized intent predictions
+     * @return GreetingResponse with personalized greeting and intent predictions
      */
     @GetMapping("/greeting")
-    public ResponseEntity<GreetingResponse> getGreeting() {
-        GreetingResponse greeting = greetingService.generateGreeting();
+    public ResponseEntity<GreetingResponse> getGreeting(@RequestParam(required = false) String userId) {
+        GreetingResponse greeting = greetingService.generateGreeting(userId);
         return ResponseEntity.ok(greeting);
+    }
+    
+    /**
+     * Get intent predictions for a specific user
+     * 
+     * @param userId User ID for intent prediction (optional, uses random scenario if null)
+     * @return List of predicted intents
+     */
+    @GetMapping("/intents")
+    public ResponseEntity<java.util.List<IntentPrediction>> getIntentPredictions(@RequestParam(required = false) String userId) {
+        java.util.List<IntentPrediction> predictions = intentPredictionService.predictIntents(userId);
+        return ResponseEntity.ok(predictions);
+    }
+    
+    /**
+     * Get the top priority intent prediction for immediate display
+     * 
+     * @param userId User ID for intent prediction (optional)
+     * @return Top priority intent prediction
+     */
+    @GetMapping("/intents/top")
+    public ResponseEntity<IntentPrediction> getTopIntent(@RequestParam(required = false) String userId) {
+        IntentPrediction topIntent = intentPredictionService.getTopPriorityIntent(userId);
+        if (topIntent != null) {
+            return ResponseEntity.ok(topIntent);
+        } else {
+            return ResponseEntity.noContent().build();
+        }
     }
 
     /**

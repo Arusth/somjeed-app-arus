@@ -52,11 +52,13 @@ class ChatService {
   /**
    * Get contextual greeting from the backend
    * 
+   * @param userId Optional user ID for personalized intent predictions
    * @returns Promise<GreetingResponse> Personalized greeting
    */
-  async getGreeting(): Promise<GreetingResponse> {
+  async getGreeting(userId?: string): Promise<GreetingResponse> {
     try {
-      const response = await this.api.get<GreetingResponse>('/greeting');
+      const params = userId ? { userId } : {};
+      const response = await this.api.get<GreetingResponse>('/greeting', { params });
       return response.data;
     } catch (error) {
       console.error('Error getting greeting:', error);

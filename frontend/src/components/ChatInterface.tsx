@@ -6,7 +6,8 @@ import MessageBubble from './MessageBubble';
 import MessageInput from './MessageInput';
 import LoadingIndicator from './LoadingIndicator';
 import GreetingMessage from './GreetingMessage';
-import type { ChatMessage, BotProfile } from '@/types/chat';
+import IntentPredictionBubble from './IntentPredictionBubble';
+import type { ChatMessage, BotProfile, IntentPrediction } from '@/types/chat';
 
 interface Message {
   id: string;
@@ -19,6 +20,8 @@ export default function ChatInterface() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showGreeting, setShowGreeting] = useState(true);
+  const [intentPredictions, setIntentPredictions] = useState<IntentPrediction[]>([]);
+  const [showIntentPredictions, setShowIntentPredictions] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Bot profile configuration
@@ -34,14 +37,29 @@ export default function ChatInterface() {
 
   useEffect(() => {
     scrollToBottom()
-  }, [messages])
+  }, [messages, showIntentPredictions])
+
+  // Handle greeting loaded callback to show intent predictions
+  const handleGreetingLoaded = (greetingData: any) => {
+    if (greetingData && greetingData.intentPredictions && greetingData.intentPredictions.length > 0) {
+      // Show intent predictions after a short delay for better UX
+      setTimeout(() => {
+        const highPriorityIntents = greetingData.intentPredictions
+          .filter((intent: IntentPrediction) => intent.showAfterGreeting)
+          .slice(0, 1); // Show only the top priority intent
+        
+        setIntentPredictions(highPriorityIntents);
+        setShowIntentPredictions(true);
+      }, 1500); // 1.5 second delay after greeting
+    }
+  };
 
   const handleSendMessage = async (text: string) => {
     if (!text.trim()) return;
 
-    // Hide greeting when first message is sent
-    if (showGreeting) {
-      setShowGreeting(false);
+    // Keep greeting visible, only hide intent predictions when user starts chatting
+    if (showIntentPredictions) {
+      setShowIntentPredictions(false);
     }
 
     // Add user message
@@ -97,14 +115,27 @@ export default function ChatInterface() {
     <div className="bg-white rounded-lg shadow-lg overflow-hidden transition-all duration-300 ease-in-out hover:shadow-xl">
       {/* Chat Messages */}
       <div className="h-96 overflow-y-auto p-4 space-y-4 scroll-smooth custom-scrollbar scrollbar-thin scrollbar-webkit">
-        {/* Show greeting message when no conversation has started */}
-        {showGreeting && messages.length === 0 && (
+        {/* Show greeting message */}
+        {showGreeting && (
           <GreetingMessage 
             botProfile={botProfile}
             autoFetch={true}
             className="mb-4"
+            userId="user_overdue"
+            onGreetingLoaded={handleGreetingLoaded}
           />
         )}
+
+        {/* Show intent predictions as separate bubbles */}
+        {showIntentPredictions && intentPredictions.map((intent, index) => (
+          <IntentPredictionBubble
+            key={intent.intentId}
+            intent={intent}
+            botProfile={botProfile}
+            isAnimated={true}
+            className="mb-4"
+          />
+        ))}
 
         {/* Show conversation messages */}
         {messages.map((message, index) => (

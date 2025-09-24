@@ -1,12 +1,14 @@
 package com.chatbotapp.service;
 
 import com.chatbotapp.dto.GreetingResponse;
+import com.chatbotapp.dto.IntentPrediction;
 import com.chatbotapp.dto.WeatherResponse;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -17,9 +19,11 @@ import java.util.Map;
 public class GreetingService {
     
     private final WeatherService weatherService;
+    private final IntentPredictionService intentPredictionService;
     
-    public GreetingService(WeatherService weatherService) {
+    public GreetingService(WeatherService weatherService, IntentPredictionService intentPredictionService) {
         this.weatherService = weatherService;
+        this.intentPredictionService = intentPredictionService;
     }
     
     /**
@@ -28,16 +32,31 @@ public class GreetingService {
      * @return GreetingResponse with personalized greeting message
      */
     public GreetingResponse generateGreeting() {
+        return generateGreeting(null);
+    }
+    
+    /**
+     * Generate contextual greeting with intent predictions for specific user
+     * 
+     * @param userId User identifier for intent prediction (null for random scenario)
+     * @return GreetingResponse with personalized greeting message and intent predictions
+     */
+    public GreetingResponse generateGreeting(String userId) {
         LocalDateTime now = LocalDateTime.now();
         String timeOfDay = getTimeOfDay(now.toLocalTime());
         WeatherResponse weather = weatherService.getCurrentWeather();
         String greetingMessage = buildGreetingMessage(timeOfDay, weather);
+        
+        // Get intent predictions for the user
+        List<IntentPrediction> intentPredictions = intentPredictionService.predictIntents(userId);
         
         return GreetingResponse.builder()
             .message(greetingMessage)
             .timeOfDay(timeOfDay)
             .weatherCondition(weather.getCondition())
             .timestamp(now)
+            .intentPredictions(intentPredictions)
+            .userId(userId)
             .build();
     }
     

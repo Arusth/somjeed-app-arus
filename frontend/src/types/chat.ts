@@ -33,11 +33,26 @@ export interface WeatherResponse {
   location: string;
 }
 
+export interface IntentPrediction {
+  intentId: string;
+  category: string;
+  predictedIntent: string;
+  suggestedMessage: string;
+  confidence: number;
+  priority: string;
+  triggerContext: string;
+  suggestedActions: string[];
+  timestamp: string;
+  showAfterGreeting: boolean;
+}
+
 export interface GreetingResponse {
   message: string;
   timeOfDay: string;
   weatherCondition: string;
   timestamp: string;
+  intentPredictions?: IntentPrediction[];
+  userId?: string;
 }
 
 // Animation states for smooth transitions

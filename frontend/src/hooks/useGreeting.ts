@@ -8,7 +8,7 @@ interface UseGreetingReturn {
   greeting: GreetingResponse | null;
   isLoading: boolean;
   error: string | null;
-  fetchGreeting: () => Promise<void>;
+  fetchGreeting: (userId?: string) => Promise<void>;
   clearError: () => void;
 }
 
@@ -29,12 +29,12 @@ export const useGreeting = (): UseGreetingReturn => {
    * Fetch greeting from the backend API
    * Handles loading states and error management
    */
-  const fetchGreeting = useCallback(async (): Promise<void> => {
+  const fetchGreeting = useCallback(async (userId?: string): Promise<void> => {
     try {
       setLoadingState('loading');
       setError(null);
       
-      const greetingData = await chatService.getGreeting();
+      const greetingData = await chatService.getGreeting(userId);
       
       setGreeting(greetingData);
       setLoadingState('success');
