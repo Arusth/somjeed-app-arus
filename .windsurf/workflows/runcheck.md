@@ -3,6 +3,8 @@ description: runcheck
 auto_execution_mode: 1
 ---
 
+Make all the code pass All code adjustments should strictly follow our coding standards. Do not use type of `any`, do not introduce eslint exceptions, and do not introduce cheap workarounds. Properly breakdown code, organize it well, and don't skimp on JSDocs.
+
 # Scripts สำหรับตรวจสอบ Code Quality และ Unit Test
 
 โฟลเดอร์นี้ประกอบด้วยสคริปต์สำหรับตรวจสอบคุณภาพโค้ดและการทดสอบของโปรเจค ChatBot Application
@@ -158,4 +160,3 @@ npm test
 - **1**: มีการตรวจสอบที่ไม่ผ่าน
 
 สามารถใช้ exit codes เหล่านี้ใน CI/CD pipeline ได้
-All code adjustments should strictly follow our coding standards. Do not use type of `any`, do not introduce eslint exceptions, and do not introduce cheap workarounds. Properly breakdown code, organize it well, and don't skimp on JSDocs.

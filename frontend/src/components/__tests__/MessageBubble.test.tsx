@@ -3,6 +3,7 @@ import MessageBubble from '../MessageBubble'
 
 describe('MessageBubble', () => {
   const mockTimestamp = new Date('2023-01-01T12:00:00Z')
+  const expectedTimeString = mockTimestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 
   it('renders user message correctly', () => {
     render(
@@ -14,7 +15,7 @@ describe('MessageBubble', () => {
     )
 
     expect(screen.getByText('Hello, bot!')).toBeInTheDocument()
-    expect(screen.getByText('12:00')).toBeInTheDocument()
+    expect(screen.getByText(expectedTimeString)).toBeInTheDocument()
   })
 
   it('renders bot message correctly', () => {
@@ -27,7 +28,7 @@ describe('MessageBubble', () => {
     )
 
     expect(screen.getByText('Hello, user!')).toBeInTheDocument()
-    expect(screen.getByText('12:00')).toBeInTheDocument()
+    expect(screen.getByText(expectedTimeString)).toBeInTheDocument()
   })
 
   it('applies correct styling for user messages', () => {

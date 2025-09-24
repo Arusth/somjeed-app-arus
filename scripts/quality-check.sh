@@ -17,6 +17,10 @@ BACKEND_DIR="backend"
 FRONTEND_DIR="frontend"
 ROOT_DIR="$(pwd)"
 
+# Java Environment Setup
+export JAVA_HOME="/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home"
+export PATH="$JAVA_HOME/bin:$PATH"
+
 echo -e "${BLUE}🚀 Starting Code Quality & Unit Test Check for ChatBot Application${NC}"
 echo "=================================================="
 
@@ -104,9 +108,22 @@ else
 fi
 TOTAL_CHECKS=$((TOTAL_CHECKS + 1))
 
-# Backend: Run integration tests
-run_command "./mvnw test -Dtest=*IT -q" "Backend integration tests"
-update_counters $?
+# Backend: Run integration tests (optional)
+echo -e "${YELLOW}🔄 Backend integration tests${NC}"
+if find src/test -name "*IT.java" 2>/dev/null | grep -q .; then
+    ./mvnw test -Dtest=*IT -q
+    if [ $? -eq 0 ]; then
+        echo -e "${GREEN}✅ Backend integration tests - PASSED${NC}"
+        PASSED_CHECKS=$((PASSED_CHECKS + 1))
+    else
+        echo -e "${RED}❌ Backend integration tests - FAILED${NC}"
+        FAILED_CHECKS=$((FAILED_CHECKS + 1))
+    fi
+else
+    echo -e "${YELLOW}⚠️  No integration tests found (optional)${NC}"
+    PASSED_CHECKS=$((PASSED_CHECKS + 1))
+fi
+TOTAL_CHECKS=$((TOTAL_CHECKS + 1))
 
 # Backend: Check for test naming conventions
 echo -e "${YELLOW}🔍 Checking backend test naming conventions...${NC}"

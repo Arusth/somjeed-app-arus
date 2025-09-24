@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import MessageInput from '../MessageInput'
 
@@ -23,8 +23,10 @@ describe('MessageInput', () => {
     const input = screen.getByPlaceholderText('Type your message...')
     const sendButton = screen.getByRole('button', { name: 'Send' })
 
-    await user.type(input, 'Hello, world!')
-    await user.click(sendButton)
+    await act(async () => {
+      await user.type(input, 'Hello, world!')
+      await user.click(sendButton)
+    })
 
     expect(mockOnSendMessage).toHaveBeenCalledWith('Hello, world!')
   })
@@ -36,8 +38,10 @@ describe('MessageInput', () => {
     const input = screen.getByPlaceholderText('Type your message...') as HTMLTextAreaElement
     const sendButton = screen.getByRole('button', { name: 'Send' })
 
-    await user.type(input, 'Test message')
-    await user.click(sendButton)
+    await act(async () => {
+      await user.type(input, 'Test message')
+      await user.click(sendButton)
+    })
 
     expect(input.value).toBe('')
   })
@@ -47,7 +51,10 @@ describe('MessageInput', () => {
     render(<MessageInput onSendMessage={mockOnSendMessage} />)
 
     const sendButton = screen.getByRole('button', { name: 'Send' })
-    await user.click(sendButton)
+    
+    await act(async () => {
+      await user.click(sendButton)
+    })
 
     expect(mockOnSendMessage).not.toHaveBeenCalled()
   })
@@ -58,8 +65,10 @@ describe('MessageInput', () => {
 
     const input = screen.getByPlaceholderText('Type your message...')
     
-    await user.type(input, 'Test message')
-    await user.keyboard('{Enter}')
+    await act(async () => {
+      await user.type(input, 'Test message')
+      await user.keyboard('{Enter}')
+    })
 
     expect(mockOnSendMessage).toHaveBeenCalledWith('Test message')
   })
