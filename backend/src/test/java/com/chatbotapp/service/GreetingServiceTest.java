@@ -1,7 +1,6 @@
 package com.chatbotapp.service;
 
 import com.chatbotapp.dto.GreetingResponse;
-import com.chatbotapp.dto.IntentPrediction;
 import com.chatbotapp.dto.WeatherResponse;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

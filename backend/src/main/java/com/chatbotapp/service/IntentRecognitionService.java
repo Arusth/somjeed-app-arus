@@ -4,6 +4,7 @@ import com.chatbotapp.dto.UserContext;
 import com.chatbotapp.dto.UserIntent;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -44,33 +45,60 @@ public class IntentRecognitionService {
     public UserIntent classifyIntent(String userMessage, UserContext userContext) {
         String message = userMessage.toLowerCase().trim();
         
+        // Enhance user context if not provided or incomplete
+        UserContext enhancedContext = enhanceUserContext(userContext);
+        
         // Try each intent classifier in order of specificity (most specific first)
-        UserIntent intent = classifyRewardPoints(message, userContext);
+        UserIntent intent = classifyRewardPoints(message, enhancedContext);
         if (intent != null) return intent;
         
-        intent = classifyTransactionDispute(message, userContext);
+        intent = classifyTransactionDispute(message, enhancedContext);
         if (intent != null) return intent;
         
-        intent = classifyCardManagement(message, userContext);
+        intent = classifyCardManagement(message, enhancedContext);
         if (intent != null) return intent;
         
-        intent = classifyCreditLimit(message, userContext);
+        intent = classifyCreditLimit(message, enhancedContext);
         if (intent != null) return intent;
         
-        intent = classifyAccountSecurity(message, userContext);
+        intent = classifyAccountSecurity(message, enhancedContext);
         if (intent != null) return intent;
         
-        intent = classifyStatementInquiry(message, userContext);
+        intent = classifyStatementInquiry(message, enhancedContext);
         if (intent != null) return intent;
         
-        intent = classifyPaymentInquiry(message, userContext);
+        intent = classifyPaymentInquiry(message, enhancedContext);
         if (intent != null) return intent;
         
-        intent = classifyTechnicalSupport(message, userContext);
+        intent = classifyTechnicalSupport(message, enhancedContext);
         if (intent != null) return intent;
         
         // Default fallback intent
         return createFallbackIntent(message);
+    }
+    
+    /**
+     * Enhance user context using UserDataService if context is missing or incomplete
+     * 
+     * @param userContext Existing user context (may be null or incomplete)
+     * @return Enhanced UserContext with additional data from UserDataService
+     */
+    private UserContext enhanceUserContext(UserContext userContext) {
+        if (userContext == null) {
+            // No context provided, get a random scenario for demonstration
+            return userDataService.getRandomUserScenario();
+        }
+        
+        if (userContext.getUserId() != null) {
+            // Try to get more complete context using the user ID
+            UserContext fullContext = userDataService.getUserContext(userContext.getUserId());
+            if (fullContext != null) {
+                return fullContext;
+            }
+        }
+        
+        // Return original context if no enhancement is possible
+        return userContext;
     }
     
     /**
@@ -84,14 +112,42 @@ public class IntentRecognitionService {
         if (containsKeywords(message, keywords)) {
             List<UserIntent.IntentEntity> entities = extractPaymentEntities(message);
             
+            // Enhance confidence and context based on user data
+            double confidence = 0.9;
+            String contextInfo = "General payment inquiry";
+            String responseTemplate = "I can help you with your payment information. Let me check your account details.";
+            
+            if (userContext != null) {
+                // Increase confidence if user has payment-related context
+                if ("OVERDUE".equals(userContext.getAccountStatus())) {
+                    confidence = 0.95;
+                    contextInfo = "User account is overdue - urgent payment needed";
+                    responseTemplate = "I see your account is overdue. Let me help you with your payment immediately.";
+                } else if (userContext.getOutstandingBalance() != null && 
+                          userContext.getOutstandingBalance().compareTo(BigDecimal.ZERO) > 0) {
+                    confidence = 0.92;
+                    contextInfo = "User has outstanding balance of " + userContext.getOutstandingBalance();
+                    responseTemplate = "I can help you with your current balance and payment options.";
+                }
+                
+                // Add balance entity if available
+                if (userContext.getOutstandingBalance() != null) {
+                    entities.add(UserIntent.IntentEntity.builder()
+                        .entityType("CURRENT_BALANCE")
+                        .entityValue(userContext.getOutstandingBalance().toString())
+                        .confidence(1.0)
+                        .build());
+                }
+            }
+            
             return UserIntent.builder()
                 .intentId("PAYMENT_INQUIRY")
                 .category("PAYMENT")
                 .intentName("Payment and Balance Inquiry")
-                .confidence(0.9)
+                .confidence(confidence)
                 .entities(entities)
-                .context(userContext != null ? "User has outstanding balance" : "General inquiry")
-                .responseTemplate("I can help you with your payment information. Let me check your account details.")
+                .context(contextInfo)
+                .responseTemplate(responseTemplate)
                 .followUpActions(Arrays.asList("Show current balance", "Show due date", "Payment options"))
                 .timestamp(LocalDateTime.now())
                 .build();
@@ -109,14 +165,40 @@ public class IntentRecognitionService {
         if (containsKeywords(message, keywords)) {
             List<UserIntent.IntentEntity> entities = extractTransactionEntities(message);
             
+            // Enhance confidence and context based on user transaction history
+            double confidence = 0.95;
+            String contextInfo = "Potential fraudulent activity";
+            String responseTemplate = "I understand you want to dispute a transaction. Let me help you with that immediately.";
+            
+            if (userContext != null && userContext.getRecentTransactions() != null) {
+                // Check for duplicate transactions (potential dispute scenario)
+                boolean hasDuplicateTransactions = checkForDuplicateTransactions(userContext);
+                if (hasDuplicateTransactions) {
+                    confidence = 0.98;
+                    contextInfo = "User has duplicate transactions - likely dispute case";
+                    responseTemplate = "I see you have similar transactions. Let me help you identify and dispute any unauthorized charges.";
+                }
+                
+                // Add recent transaction entities for context
+                userContext.getRecentTransactions().stream()
+                    .limit(3) // Include up to 3 recent transactions
+                    .forEach(transaction -> {
+                        entities.add(UserIntent.IntentEntity.builder()
+                            .entityType("RECENT_TRANSACTION")
+                            .entityValue(transaction.getDescription() + " - " + transaction.getAmount())
+                            .confidence(0.9)
+                            .build());
+                    });
+            }
+            
             return UserIntent.builder()
                 .intentId("TRANSACTION_DISPUTE")
                 .category("TRANSACTION")
                 .intentName("Transaction Dispute")
-                .confidence(0.95)
+                .confidence(confidence)
                 .entities(entities)
-                .context("Potential fraudulent activity")
-                .responseTemplate("I understand you want to dispute a transaction. Let me help you with that immediately.")
+                .context(contextInfo)
+                .responseTemplate(responseTemplate)
                 .followUpActions(Arrays.asList("Identify transaction", "Block card if needed", "File dispute"))
                 .timestamp(LocalDateTime.now())
                 .build();
@@ -400,5 +482,41 @@ public class IntentRecognitionService {
             .followUpActions(Arrays.asList("Show available services", "Ask for clarification"))
             .timestamp(LocalDateTime.now())
             .build();
+    }
+    
+    /**
+     * Check if user has duplicate transactions that might indicate a dispute scenario
+     * 
+     * @param userContext User context with transaction history
+     * @return true if duplicate transactions are found
+     */
+    private boolean checkForDuplicateTransactions(UserContext userContext) {
+        if (userContext.getRecentTransactions() == null || userContext.getRecentTransactions().size() < 2) {
+            return false;
+        }
+        
+        // Check for transactions with same amount and description within a short time window
+        for (int i = 0; i < userContext.getRecentTransactions().size(); i++) {
+            for (int j = i + 1; j < userContext.getRecentTransactions().size(); j++) {
+                UserContext.TransactionData tx1 = userContext.getRecentTransactions().get(i);
+                UserContext.TransactionData tx2 = userContext.getRecentTransactions().get(j);
+                
+                // Check if transactions have same amount and similar description
+                if (tx1.getAmount().equals(tx2.getAmount()) && 
+                    tx1.getDescription().equalsIgnoreCase(tx2.getDescription())) {
+                    
+                    // Check if they occurred within 30 minutes of each other
+                    long timeDifferenceMinutes = Math.abs(
+                        java.time.Duration.between(tx1.getTimestamp(), tx2.getTimestamp()).toMinutes()
+                    );
+                    
+                    if (timeDifferenceMinutes <= 30) {
+                        return true;
+                    }
+                }
+            }
+        }
+        
+        return false;
     }
 }

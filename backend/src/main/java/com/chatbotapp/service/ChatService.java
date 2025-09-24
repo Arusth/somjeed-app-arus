@@ -115,14 +115,8 @@ public class ChatService {
      * Generate bot response based on user message using intent recognition and conversation context
      * 
      * @param userMessage User's message
+     * @param userId User ID for session-based context tracking
      * @return Bot response text
-     */
-    private String generateResponse(String userMessage) {
-        return generateResponse(userMessage, "default_user");
-    }
-    
-    /**
-     * Generate response with specific user ID (used for session-based context)
      */
     private String generateResponse(String userMessage, String userId) {
         
