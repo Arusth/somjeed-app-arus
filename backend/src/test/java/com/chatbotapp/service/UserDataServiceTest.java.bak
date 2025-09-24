@@ -1,0 +1,213 @@
+package com.chatbotapp.service;
+
+import com.chatbotapp.dto.UserContext;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+/**
+ * Unit tests for UserDataService
+ * Tests mock user data scenarios for intent prediction
+ */
+class UserDataServiceTest {
+
+    private UserDataService userDataService;
+
+    @BeforeEach
+    void setUp() {
+        userDataService = new UserDataService();
+    }
+
+    @Test
+    @DisplayName("Should return overdue user context for user_overdue")
+    void shouldReturnOverdueUserContextForUserOverdue() {
+        // Act
+        UserContext result = userDataService.getUserContext("user_overdue");
+
+        // Assert
+        assertThat(result).isNotNull();
+        assertThat(result.getUserId()).isEqualTo("user_overdue");
+        assertThat(result.getOutstandingBalance()).isGreaterThan(BigDecimal.ZERO);
+        assertThat(result.getDueDate()).isBefore(LocalDate.now());
+        assertThat(result.getCreditLimit()).isEqualTo(new BigDecimal("150000"));
+        assertThat(result.getAvailableCredit()).isEqualTo(new BigDecimal("30000"));
+        assertThat(result.getLastPaymentDate()).isBefore(LocalDate.now().minusDays(30));
+        assertThat(result.getRecentTransactions()).hasSize(3);
+    }
+
+    @Test
+    @DisplayName("Should return recent payment user context for user_recent_payment")
+    void shouldReturnRecentPaymentUserContextForUserRecentPayment() {
+        // Act
+        UserContext result = userDataService.getUserContext("user_recent_payment");
+
+        // Assert
+        assertThat(result).isNotNull();
+        assertThat(result.getUserId()).isEqualTo("user_recent_payment");
+        assertThat(result.getOutstandingBalance()).isEqualTo(new BigDecimal("25000"));
+        assertThat(result.getDueDate()).isAfter(LocalDate.now());
+        assertThat(result.getCreditLimit()).isEqualTo(new BigDecimal("200000"));
+        assertThat(result.getAvailableCredit()).isEqualTo(new BigDecimal("175000"));
+        assertThat(result.getLastPaymentDate()).isEqualTo(LocalDate.now());
+        assertThat(result.getRecentTransactions()).hasSize(5);
+    }
+
+    @Test
+    @DisplayName("Should return duplicate transactions user context for user_duplicate_transactions")
+    void shouldReturnDuplicateTransactionsUserContextForUserDuplicateTransactions() {
+        // Act
+        UserContext result = userDataService.getUserContext("user_duplicate_transactions");
+
+        // Assert
+        assertThat(result).isNotNull();
+        assertThat(result.getUserId()).isEqualTo("user_duplicate_transactions");
+        assertThat(result.getOutstandingBalance()).isEqualTo(new BigDecimal("45000"));
+        assertThat(result.getDueDate()).isAfter(LocalDate.now().plusDays(10));
+        assertThat(result.getCreditLimit()).isEqualTo(new BigDecimal("180000"));
+        assertThat(result.getAvailableCredit()).isEqualTo(new BigDecimal("135000"));
+        assertThat(result.getRecentTransactions()).hasSize(4);
+        
+        // Check for duplicate transactions (same merchant, similar amounts, close dates)
+        long duplicateCount = result.getRecentTransactions().stream()
+            .filter(t -> "Central Plaza".equals(t.getMerchant()))
+            .count();
+        assertThat(duplicateCount).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("Should return normal user context for user_normal")
+    void shouldReturnNormalUserContextForUserNormal() {
+        // Act
+        UserContext result = userDataService.getUserContext("user_normal");
+
+        // Assert
+        assertThat(result).isNotNull();
+        assertThat(result.getUserId()).isEqualTo("user_normal");
+        assertThat(result.getOutstandingBalance()).isEqualTo(new BigDecimal("15000"));
+        assertThat(result.getDueDate()).isAfter(LocalDate.now().plusDays(15));
+        assertThat(result.getCreditLimit()).isEqualTo(new BigDecimal("100000"));
+        assertThat(result.getAvailableCredit()).isEqualTo(new BigDecimal("85000"));
+        assertThat(result.getLastPaymentDate()).isAfter(LocalDate.now().minusDays(30));
+        assertThat(result.getRecentTransactions()).hasSize(3);
+    }
+
+    @Test
+    @DisplayName("Should return random user scenario when userId is null")
+    void shouldReturnRandomUserScenarioWhenUserIdIsNull() {
+        // Act
+        UserContext result = userDataService.getUserContext(null);
+
+        // Assert
+        assertThat(result).isNotNull();
+        assertThat(result.getUserId()).isIn("user_overdue", "user_recent_payment", "user_duplicate_transactions", "user_normal");
+        assertThat(result.getOutstandingBalance()).isNotNull();
+        assertThat(result.getDueDate()).isNotNull();
+        assertThat(result.getCreditLimit()).isNotNull();
+        assertThat(result.getAvailableCredit()).isNotNull();
+        assertThat(result.getRecentTransactions()).isNotEmpty();
+    }
+
+    @Test
+    @DisplayName("Should return random user scenario when userId is unknown")
+    void shouldReturnRandomUserScenarioWhenUserIdIsUnknown() {
+        // Act
+        UserContext result = userDataService.getUserContext("unknown_user");
+
+        // Assert
+        assertThat(result).isNotNull();
+        assertThat(result.getUserId()).isIn("user_overdue", "user_recent_payment", "user_duplicate_transactions", "user_normal");
+    }
+
+    @Test
+    @DisplayName("Should return random user scenario from getRandomUserScenario")
+    void shouldReturnRandomUserScenarioFromGetRandomUserScenario() {
+        // Act
+        UserContext result = userDataService.getRandomUserScenario();
+
+        // Assert
+        assertThat(result).isNotNull();
+        assertThat(result.getUserId()).isIn("user_overdue", "user_recent_payment", "user_duplicate_transactions", "user_normal");
+        assertThat(result.getOutstandingBalance()).isNotNull();
+        assertThat(result.getDueDate()).isNotNull();
+        assertThat(result.getCreditLimit()).isNotNull();
+        assertThat(result.getAvailableCredit()).isNotNull();
+        assertThat(result.getRecentTransactions()).isNotEmpty();
+    }
+
+    @Test
+    @DisplayName("Should have consistent data structure across all scenarios")
+    void shouldHaveConsistentDataStructureAcrossAllScenarios() {
+        // Arrange
+        String[] userIds = {"user_overdue", "user_recent_payment", "user_duplicate_transactions", "user_normal"};
+
+        // Act & Assert
+        for (String userId : userIds) {
+            UserContext result = userDataService.getUserContext(userId);
+            
+            assertThat(result).isNotNull();
+            assertThat(result.getUserId()).isEqualTo(userId);
+            assertThat(result.getOutstandingBalance()).isNotNull();
+            assertThat(result.getDueDate()).isNotNull();
+            assertThat(result.getCreditLimit()).isNotNull();
+            assertThat(result.getAvailableCredit()).isNotNull();
+            assertThat(result.getLastPaymentDate()).isNotNull();
+            assertThat(result.getRecentTransactions()).isNotEmpty();
+            
+            // Verify business logic consistency
+            assertThat(result.getAvailableCredit())
+                .isLessThanOrEqualTo(result.getCreditLimit());
+            assertThat(result.getOutstandingBalance())
+                .isLessThanOrEqualTo(result.getCreditLimit());
+        }
+    }
+
+    @Test
+    @DisplayName("Should have realistic transaction data in all scenarios")
+    void shouldHaveRealisticTransactionDataInAllScenarios() {
+        // Arrange
+        String[] userIds = {"user_overdue", "user_recent_payment", "user_duplicate_transactions", "user_normal"};
+
+        // Act & Assert
+        for (String userId : userIds) {
+            UserContext result = userDataService.getUserContext(userId);
+            
+            result.getRecentTransactions().forEach(transaction -> {
+                assertThat(transaction.getAmount()).isGreaterThan(BigDecimal.ZERO);
+                assertThat(transaction.getMerchant()).isNotBlank();
+                assertThat(transaction.getDate()).isNotNull();
+                assertThat(transaction.getCategory()).isNotBlank();
+            });
+        }
+    }
+
+    @Test
+    @DisplayName("Should generate different random scenarios on multiple calls")
+    void shouldGenerateDifferentRandomScenariosOnMultipleCalls() {
+        // Act - Call multiple times to test randomness
+        UserContext result1 = userDataService.getRandomUserScenario();
+        UserContext result2 = userDataService.getRandomUserScenario();
+        UserContext result3 = userDataService.getRandomUserScenario();
+        UserContext result4 = userDataService.getRandomUserScenario();
+        UserContext result5 = userDataService.getRandomUserScenario();
+
+        // Assert - Should eventually get different scenarios (not guaranteed in single test but likely)
+        assertThat(result1).isNotNull();
+        assertThat(result2).isNotNull();
+        assertThat(result3).isNotNull();
+        assertThat(result4).isNotNull();
+        assertThat(result5).isNotNull();
+        
+        // At least verify all results are valid scenarios
+        String[] validScenarios = {"user_overdue", "user_recent_payment", "user_duplicate_transactions", "user_normal"};
+        assertThat(result1.getUserId()).isIn(validScenarios);
+        assertThat(result2.getUserId()).isIn(validScenarios);
+        assertThat(result3.getUserId()).isIn(validScenarios);
+        assertThat(result4.getUserId()).isIn(validScenarios);
+        assertThat(result5.getUserId()).isIn(validScenarios);
+    }
+}

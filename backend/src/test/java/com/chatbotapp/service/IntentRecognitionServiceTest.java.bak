@@ -1,0 +1,274 @@
+package com.chatbotapp.service;
+
+import com.chatbotapp.dto.UserContext;
+import com.chatbotapp.dto.UserIntent;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.when;
+
+/**
+ * Unit tests for IntentRecognitionService
+ * Tests intent classification for 8 main categories
+ */
+@ExtendWith(MockitoExtension.class)
+class IntentRecognitionServiceTest {
+
+    @Mock
+    private UserDataService userDataService;
+
+    @InjectMocks
+    private IntentRecognitionService intentRecognitionService;
+
+    private UserContext mockUserContext;
+
+    @BeforeEach
+    void setUp() {
+        mockUserContext = UserContext.builder()
+            .userId("testUser")
+            .outstandingBalance(new BigDecimal("5000.00"))
+            .dueDate(LocalDate.now().plusDays(5))
+            .creditLimit(new BigDecimal("50000.00"))
+            .availableCredit(new BigDecimal("45000.00"))
+            .build();
+    }
+
+    @Test
+    @DisplayName("Should classify payment inquiry intent")
+    void shouldClassifyPaymentInquiryIntent() {
+        // Arrange
+        String message = "What is my current balance?";
+
+        // Act
+        UserIntent result = intentRecognitionService.classifyIntent(message, mockUserContext);
+
+        // Assert
+        assertThat(result).isNotNull();
+        assertThat(result.getIntentId()).isEqualTo("PAYMENT_INQUIRY");
+        assertThat(result.getCategory()).isEqualTo("PAYMENT");
+        assertThat(result.getIntentName()).isEqualTo("Payment and Balance Inquiry");
+        assertThat(result.getConfidence()).isEqualTo(0.9);
+        assertThat(result.getResponseTemplate()).contains("payment information");
+    }
+
+    @Test
+    @DisplayName("Should classify transaction dispute intent")
+    void shouldClassifyTransactionDisputeIntent() {
+        // Arrange
+        String message = "I want to dispute an unauthorized charge";
+
+        // Act
+        UserIntent result = intentRecognitionService.classifyIntent(message, mockUserContext);
+
+        // Assert
+        assertThat(result).isNotNull();
+        assertThat(result.getIntentId()).isEqualTo("TRANSACTION_DISPUTE");
+        assertThat(result.getCategory()).isEqualTo("TRANSACTION");
+        assertThat(result.getIntentName()).isEqualTo("Transaction Dispute");
+        assertThat(result.getConfidence()).isEqualTo(0.95);
+        assertThat(result.getResponseTemplate()).contains("dispute a transaction");
+    }
+
+    @Test
+    @DisplayName("Should classify card management intent")
+    void shouldClassifyCardManagementIntent() {
+        // Arrange
+        String message = "I need to block my card";
+
+        // Act
+        UserIntent result = intentRecognitionService.classifyIntent(message, mockUserContext);
+
+        // Assert
+        assertThat(result).isNotNull();
+        assertThat(result.getIntentId()).isEqualTo("CARD_MANAGEMENT");
+        assertThat(result.getCategory()).isEqualTo("ACCOUNT");
+        assertThat(result.getIntentName()).isEqualTo("Card Management");
+        assertThat(result.getConfidence()).isEqualTo(0.92);
+        assertThat(result.getEntities()).hasSize(1);
+        assertThat(result.getEntities().get(0).getEntityValue()).isEqualTo("block");
+    }
+
+    @Test
+    @DisplayName("Should classify credit limit intent")
+    void shouldClassifyCreditLimitIntent() {
+        // Arrange
+        String message = "Can I increase my credit limit to 100000?";
+
+        // Act
+        UserIntent result = intentRecognitionService.classifyIntent(message, mockUserContext);
+
+        // Assert
+        assertThat(result).isNotNull();
+        assertThat(result.getIntentId()).isEqualTo("CREDIT_LIMIT");
+        assertThat(result.getCategory()).isEqualTo("ACCOUNT");
+        assertThat(result.getIntentName()).isEqualTo("Credit Limit Inquiry");
+        assertThat(result.getConfidence()).isEqualTo(0.88);
+        assertThat(result.getEntities()).hasSize(1);
+        assertThat(result.getEntities().get(0).getEntityType()).isEqualTo("REQUESTED_AMOUNT");
+    }
+
+    @Test
+    @DisplayName("Should classify account security intent")
+    void shouldClassifyAccountSecurityIntent() {
+        // Arrange
+        String message = "I think my account has been hacked";
+
+        // Act
+        UserIntent result = intentRecognitionService.classifyIntent(message, mockUserContext);
+
+        // Assert
+        assertThat(result).isNotNull();
+        assertThat(result.getIntentId()).isEqualTo("ACCOUNT_SECURITY");
+        assertThat(result.getCategory()).isEqualTo("SECURITY");
+        assertThat(result.getIntentName()).isEqualTo("Account Security Concern");
+        assertThat(result.getConfidence()).isEqualTo(0.96);
+        assertThat(result.getResponseTemplate()).contains("security very seriously");
+    }
+
+    @Test
+    @DisplayName("Should classify statement inquiry intent")
+    void shouldClassifyStatementInquiryIntent() {
+        // Arrange
+        String message = "Can I get my statement for January?";
+
+        // Act
+        UserIntent result = intentRecognitionService.classifyIntent(message, mockUserContext);
+
+        // Assert
+        assertThat(result).isNotNull();
+        assertThat(result.getIntentId()).isEqualTo("STATEMENT_INQUIRY");
+        assertThat(result.getCategory()).isEqualTo("ACCOUNT");
+        assertThat(result.getIntentName()).isEqualTo("Statement and History Request");
+        assertThat(result.getConfidence()).isEqualTo(0.85);
+        assertThat(result.getEntities()).hasSize(1);
+        assertThat(result.getEntities().get(0).getEntityType()).isEqualTo("MONTH");
+    }
+
+    @Test
+    @DisplayName("Should classify reward points intent")
+    void shouldClassifyRewardPointsIntent() {
+        // Arrange
+        String message = "How many points do I have?";
+
+        // Act
+        UserIntent result = intentRecognitionService.classifyIntent(message, mockUserContext);
+
+        // Assert
+        assertThat(result).isNotNull();
+        assertThat(result.getIntentId()).isEqualTo("REWARD_POINTS");
+        assertThat(result.getCategory()).isEqualTo("REWARDS");
+        assertThat(result.getIntentName()).isEqualTo("Reward Points Inquiry");
+        assertThat(result.getConfidence()).isEqualTo(0.83);
+        assertThat(result.getResponseTemplate()).contains("reward points");
+    }
+
+    @Test
+    @DisplayName("Should classify technical support intent")
+    void shouldClassifyTechnicalSupportIntent() {
+        // Arrange
+        String message = "The app is not working";
+
+        // Act
+        UserIntent result = intentRecognitionService.classifyIntent(message, mockUserContext);
+
+        // Assert
+        assertThat(result).isNotNull();
+        assertThat(result.getIntentId()).isEqualTo("TECHNICAL_SUPPORT");
+        assertThat(result.getCategory()).isEqualTo("SUPPORT");
+        assertThat(result.getIntentName()).isEqualTo("Technical Support");
+        assertThat(result.getConfidence()).isEqualTo(0.80);
+        assertThat(result.getResponseTemplate()).contains("technical issue");
+    }
+
+    @Test
+    @DisplayName("Should return fallback intent for unrecognized message")
+    void shouldReturnFallbackIntentForUnrecognizedMessage() {
+        // Arrange
+        String message = "xyz random message that doesn't match any pattern";
+
+        // Act
+        UserIntent result = intentRecognitionService.classifyIntent(message, mockUserContext);
+
+        // Assert
+        assertThat(result).isNotNull();
+        assertThat(result.getIntentId()).isEqualTo("UNRECOGNIZED_INQUIRY");
+        assertThat(result.getCategory()).isEqualTo("SUPPORT");
+        assertThat(result.getIntentName()).isEqualTo("Unrecognized Inquiry");
+        assertThat(result.getConfidence()).isEqualTo(0.3);
+        assertThat(result.getResponseTemplate()).contains("didn't understand");
+    }
+
+    @Test
+    @DisplayName("Should handle null user context gracefully")
+    void shouldHandleNullUserContextGracefully() {
+        // Arrange
+        String message = "What is my balance?";
+
+        // Act
+        UserIntent result = intentRecognitionService.classifyIntent(message, null);
+
+        // Assert
+        assertThat(result).isNotNull();
+        assertThat(result.getIntentId()).isEqualTo("PAYMENT_INQUIRY");
+        assertThat(result.getContext()).isEqualTo("General inquiry");
+    }
+
+    @Test
+    @DisplayName("Should extract payment entities correctly")
+    void shouldExtractPaymentEntitiesCorrectly() {
+        // Arrange
+        String message = "I want to pay 1,500.00 for my bill";
+
+        // Act
+        UserIntent result = intentRecognitionService.classifyIntent(message, mockUserContext);
+
+        // Assert
+        assertThat(result).isNotNull();
+        assertThat(result.getIntentId()).isEqualTo("PAYMENT_INQUIRY");
+        assertThat(result.getEntities()).hasSize(1);
+        assertThat(result.getEntities().get(0).getEntityType()).isEqualTo("AMOUNT");
+        assertThat(result.getEntities().get(0).getEntityValue()).isEqualTo("1,500.00");
+    }
+
+    @Test
+    @DisplayName("Should extract merchant entities from dispute messages")
+    void shouldExtractMerchantEntitiesFromDisputeMessages() {
+        // Arrange
+        String message = "I want to dispute a charge from Amazon";
+
+        // Act
+        UserIntent result = intentRecognitionService.classifyIntent(message, mockUserContext);
+
+        // Assert
+        assertThat(result).isNotNull();
+        assertThat(result.getIntentId()).isEqualTo("TRANSACTION_DISPUTE");
+        assertThat(result.getEntities()).hasSize(1);
+        assertThat(result.getEntities().get(0).getEntityType()).isEqualTo("MERCHANT");
+        assertThat(result.getEntities().get(0).getEntityValue()).isEqualTo("Amazon");
+    }
+
+    @Test
+    @DisplayName("Should prioritize more specific intents over general ones")
+    void shouldPrioritizeMoreSpecificIntentsOverGeneralOnes() {
+        // Arrange
+        String message = "I want to redeem my points for cashback";
+
+        // Act
+        UserIntent result = intentRecognitionService.classifyIntent(message, mockUserContext);
+
+        // Assert
+        assertThat(result).isNotNull();
+        assertThat(result.getIntentId()).isEqualTo("REWARD_POINTS");
+        assertThat(result.getCategory()).isEqualTo("REWARDS");
+        assertThat(result.getConfidence()).isEqualTo(0.83);
+    }
+}

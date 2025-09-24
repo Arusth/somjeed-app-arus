@@ -1,0 +1,350 @@
+package com.chatbotapp.service;
+
+import com.chatbotapp.dto.ConversationClosureRequest;
+import com.chatbotapp.dto.ConversationClosureResponse;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+/**
+ * Unit tests for ConversationClosureService
+ * Tests silence detection and conversation closure logic
+ */
+@ExtendWith(MockitoExtension.class)
+class ConversationClosureServiceTest {
+
+    @InjectMocks
+    private ConversationClosureService conversationClosureService;
+
+    private ConversationClosureRequest mockRequest;
+
+    @BeforeEach
+    void setUp() {
+        mockRequest = ConversationClosureRequest.builder()
+            .sessionId("test-session-123")
+            .silenceDuration(10)
+            .lastMessageTopic("Payment Inquiry")
+            .messageCount(5)
+            .userSatisfied(true)
+            .build();
+    }
+
+    @Test
+    @DisplayName("Should handle first silence threshold (10 seconds)")
+    void shouldHandleFirstSilenceThreshold() {
+        // Arrange
+        ConversationClosureRequest request = ConversationClosureRequest.builder()
+            .sessionId("test-session-123")
+            .silenceDuration(10)
+            .lastMessageTopic("Payment Inquiry")
+            .messageCount(5)
+            .userSatisfied(true)
+            .build();
+
+        // Act
+        ConversationClosureResponse response = conversationClosureService.handleSilence(request);
+
+        // Assert
+        assertThat(response).isNotNull();
+        assertThat(response.getMessage()).contains("Do you need any further assistance?");
+        assertThat(response.getClosureStage()).isEqualTo("FIRST_PROMPT");
+        assertThat(response.getShouldShowFeedback()).isFalse();
+        assertThat(response.getShouldEndConversation()).isFalse();
+        assertThat(response.getRecommendedActions()).contains("Continue conversation");
+        assertThat(response.getRecommendedActions()).contains("Ask specific question");
+    }
+
+    @Test
+    @DisplayName("Should handle second silence threshold (20 seconds)")
+    void shouldHandleSecondSilenceThreshold() {
+        // Arrange
+        ConversationClosureRequest request = ConversationClosureRequest.builder()
+            .sessionId("test-session-456")
+            .silenceDuration(20)
+            .lastMessageTopic("Card Management")
+            .messageCount(8)
+            .userSatisfied(true)
+            .build();
+
+        // Act
+        ConversationClosureResponse response = conversationClosureService.handleSilence(request);
+
+        // Assert
+        assertThat(response).isNotNull();
+        assertThat(response.getMessage()).contains("Thanks for chatting with me today");
+        assertThat(response.getMessage()).contains("rate your experience");
+        assertThat(response.getClosureStage()).isEqualTo("FEEDBACK_REQUEST");
+        assertThat(response.getShouldShowFeedback()).isTrue();
+        assertThat(response.getShouldEndConversation()).isFalse();
+        assertThat(response.getRecommendedActions()).contains("Provide feedback");
+        assertThat(response.getRecommendedActions()).contains("Rate experience");
+    }
+
+    @Test
+    @DisplayName("Should handle third silence threshold (50 seconds)")
+    void shouldHandleThirdSilenceThreshold() {
+        // Arrange
+        ConversationClosureRequest request = ConversationClosureRequest.builder()
+            .sessionId("test-session-789")
+            .silenceDuration(50)
+            .lastMessageTopic("Technical Support")
+            .messageCount(12)
+            .userSatisfied(false)
+            .build();
+
+        // Act
+        ConversationClosureResponse response = conversationClosureService.handleSilence(request);
+
+        // Assert
+        assertThat(response).isNotNull();
+        assertThat(response.getMessage()).contains("Thank you for using our service today");
+        assertThat(response.getMessage()).contains("Have a great day!");
+        assertThat(response.getClosureStage()).isEqualTo("FINAL_GOODBYE");
+        assertThat(response.getShouldShowFeedback()).isFalse();
+        assertThat(response.getShouldEndConversation()).isTrue();
+        assertThat(response.getRecommendedActions()).contains("End conversation");
+        assertThat(response.getRecommendedActions()).contains("Close chat");
+    }
+
+    @Test
+    @DisplayName("Should handle silence beyond final threshold")
+    void shouldHandleSilenceBeyondFinalThreshold() {
+        // Arrange
+        ConversationClosureRequest request = ConversationClosureRequest.builder()
+            .sessionId("test-session-999")
+            .silenceDuration(120)
+            .lastMessageTopic("General Inquiry")
+            .messageCount(3)
+            .userSatisfied(true)
+            .build();
+
+        // Act
+        ConversationClosureResponse response = conversationClosureService.handleSilence(request);
+
+        // Assert
+        assertThat(response).isNotNull();
+        assertThat(response.getMessage()).contains("Thank you for using our service today");
+        assertThat(response.getClosureStage()).isEqualTo("FINAL_GOODBYE");
+        assertThat(response.getShouldEndConversation()).isTrue();
+    }
+
+    @Test
+    @DisplayName("Should customize message based on conversation topic")
+    void shouldCustomizeMessageBasedOnConversationTopic() {
+        // Arrange - Payment related topic
+        ConversationClosureRequest paymentRequest = ConversationClosureRequest.builder()
+            .sessionId("test-session-payment")
+            .silenceDuration(20)
+            .lastMessageTopic("Payment Inquiry")
+            .messageCount(6)
+            .userSatisfied(true)
+            .build();
+
+        // Act
+        ConversationClosureResponse response = conversationClosureService.handleSilence(paymentRequest);
+
+        // Assert
+        assertThat(response.getMessage()).contains("helped with your payment");
+    }
+
+    @Test
+    @DisplayName("Should customize message for security topics")
+    void shouldCustomizeMessageForSecurityTopics() {
+        // Arrange - Security related topic
+        ConversationClosureRequest securityRequest = ConversationClosureRequest.builder()
+            .sessionId("test-session-security")
+            .silenceDuration(20)
+            .lastMessageTopic("Account Security")
+            .messageCount(4)
+            .userSatisfied(true)
+            .build();
+
+        // Act
+        ConversationClosureResponse response = conversationClosureService.handleSilence(securityRequest);
+
+        // Assert
+        assertThat(response.getMessage()).contains("secured your account");
+    }
+
+    @Test
+    @DisplayName("Should customize message for card management topics")
+    void shouldCustomizeMessageForCardManagementTopics() {
+        // Arrange - Card management topic
+        ConversationClosureRequest cardRequest = ConversationClosureRequest.builder()
+            .sessionId("test-session-card")
+            .silenceDuration(20)
+            .lastMessageTopic("Card Management")
+            .messageCount(7)
+            .userSatisfied(true)
+            .build();
+
+        // Act
+        ConversationClosureResponse response = conversationClosureService.handleSilence(cardRequest);
+
+        // Assert
+        assertThat(response.getMessage()).contains("helped with your card");
+    }
+
+    @Test
+    @DisplayName("Should handle short conversations differently")
+    void shouldHandleShortConversationsDifferently() {
+        // Arrange - Very short conversation
+        ConversationClosureRequest shortRequest = ConversationClosureRequest.builder()
+            .sessionId("test-session-short")
+            .silenceDuration(20)
+            .lastMessageTopic("General Inquiry")
+            .messageCount(1)
+            .userSatisfied(true)
+            .build();
+
+        // Act
+        ConversationClosureResponse response = conversationClosureService.handleSilence(shortRequest);
+
+        // Assert
+        assertThat(response.getMessage()).contains("brief chat");
+    }
+
+    @Test
+    @DisplayName("Should handle long conversations appropriately")
+    void shouldHandleLongConversationsAppropriately() {
+        // Arrange - Long conversation
+        ConversationClosureRequest longRequest = ConversationClosureRequest.builder()
+            .sessionId("test-session-long")
+            .silenceDuration(20)
+            .lastMessageTopic("Multiple Topics")
+            .messageCount(25)
+            .userSatisfied(true)
+            .build();
+
+        // Act
+        ConversationClosureResponse response = conversationClosureService.handleSilence(longRequest);
+
+        // Assert
+        assertThat(response.getMessage()).contains("comprehensive discussion");
+    }
+
+    @Test
+    @DisplayName("Should adjust message based on user satisfaction")
+    void shouldAdjustMessageBasedOnUserSatisfaction() {
+        // Arrange - Unsatisfied user
+        ConversationClosureRequest unsatisfiedRequest = ConversationClosureRequest.builder()
+            .sessionId("test-session-unsatisfied")
+            .silenceDuration(20)
+            .lastMessageTopic("Technical Support")
+            .messageCount(8)
+            .userSatisfied(false)
+            .build();
+
+        // Act
+        ConversationClosureResponse response = conversationClosureService.handleSilence(unsatisfiedRequest);
+
+        // Assert
+        assertThat(response.getMessage()).contains("sorry we couldn't fully resolve");
+        assertThat(response.getMessage()).contains("escalate this matter");
+    }
+
+    @Test
+    @DisplayName("Should provide appropriate recommended actions for each stage")
+    void shouldProvideAppropriateRecommendedActionsForEachStage() {
+        // Test first stage
+        ConversationClosureRequest firstStage = ConversationClosureRequest.builder()
+            .silenceDuration(10)
+            .build();
+        
+        ConversationClosureResponse response1 = conversationClosureService.handleSilence(firstStage);
+        assertThat(response1.getRecommendedActions()).contains("Continue conversation");
+
+        // Test second stage
+        ConversationClosureRequest secondStage = ConversationClosureRequest.builder()
+            .silenceDuration(20)
+            .build();
+        
+        ConversationClosureResponse response2 = conversationClosureService.handleSilence(secondStage);
+        assertThat(response2.getRecommendedActions()).contains("Provide feedback");
+
+        // Test final stage
+        ConversationClosureRequest finalStage = ConversationClosureRequest.builder()
+            .silenceDuration(50)
+            .build();
+        
+        ConversationClosureResponse response3 = conversationClosureService.handleSilence(finalStage);
+        assertThat(response3.getRecommendedActions()).contains("End conversation");
+    }
+
+    @Test
+    @DisplayName("Should handle null or empty topic gracefully")
+    void shouldHandleNullOrEmptyTopicGracefully() {
+        // Arrange
+        ConversationClosureRequest nullTopicRequest = ConversationClosureRequest.builder()
+            .sessionId("test-session-null-topic")
+            .silenceDuration(20)
+            .lastMessageTopic(null)
+            .messageCount(5)
+            .userSatisfied(true)
+            .build();
+
+        // Act
+        ConversationClosureResponse response = conversationClosureService.handleSilence(nullTopicRequest);
+
+        // Assert
+        assertThat(response).isNotNull();
+        assertThat(response.getMessage()).isNotNull();
+        assertThat(response.getClosureStage()).isEqualTo("FEEDBACK_REQUEST");
+    }
+
+    @Test
+    @DisplayName("Should handle zero message count gracefully")
+    void shouldHandleZeroMessageCountGracefully() {
+        // Arrange
+        ConversationClosureRequest zeroMessagesRequest = ConversationClosureRequest.builder()
+            .sessionId("test-session-zero")
+            .silenceDuration(20)
+            .lastMessageTopic("General")
+            .messageCount(0)
+            .userSatisfied(true)
+            .build();
+
+        // Act
+        ConversationClosureResponse response = conversationClosureService.handleSilence(zeroMessagesRequest);
+
+        // Assert
+        assertThat(response).isNotNull();
+        assertThat(response.getMessage()).contains("connecting with me");
+    }
+
+    @Test
+    @DisplayName("Should include session tracking information")
+    void shouldIncludeSessionTrackingInformation() {
+        // Act
+        ConversationClosureResponse response = conversationClosureService.handleSilence(mockRequest);
+
+        // Assert
+        assertThat(response.getSessionId()).isEqualTo("test-session-123");
+        assertThat(response.getTimestamp()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("Should provide contextual follow-up suggestions")
+    void shouldProvideContextualFollowUpSuggestions() {
+        // Arrange - Payment topic
+        ConversationClosureRequest paymentRequest = ConversationClosureRequest.builder()
+            .sessionId("test-session-payment-followup")
+            .silenceDuration(10)
+            .lastMessageTopic("Payment Inquiry")
+            .messageCount(3)
+            .userSatisfied(true)
+            .build();
+
+        // Act
+        ConversationClosureResponse response = conversationClosureService.handleSilence(paymentRequest);
+
+        // Assert
+        assertThat(response.getRecommendedActions()).contains("Check payment status");
+        assertThat(response.getRecommendedActions()).contains("Set up payment reminder");
+    }
+}

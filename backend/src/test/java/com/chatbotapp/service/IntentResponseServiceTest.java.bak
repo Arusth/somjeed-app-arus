@@ -1,0 +1,424 @@
+package com.chatbotapp.service;
+
+import com.chatbotapp.dto.UserContext;
+import com.chatbotapp.dto.UserIntent;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Arrays;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.when;
+
+/**
+ * Unit tests for IntentResponseService
+ * Tests response generation for all 8 intent categories
+ */
+@ExtendWith(MockitoExtension.class)
+class IntentResponseServiceTest {
+
+    @Mock
+    private UserDataService userDataService;
+
+    @InjectMocks
+    private IntentResponseService intentResponseService;
+
+    private UserContext mockUserContext;
+
+    @BeforeEach
+    void setUp() {
+        mockUserContext = UserContext.builder()
+            .userId("testUser")
+            .outstandingBalance(new BigDecimal("5000.00"))
+            .dueDate(LocalDate.now().plusDays(5))
+            .creditLimit(new BigDecimal("50000.00"))
+            .availableCredit(new BigDecimal("45000.00"))
+            .build();
+    }
+
+    @Test
+    @DisplayName("Should generate payment inquiry response with balance info")
+    void shouldGeneratePaymentInquiryResponseWithBalanceInfo() {
+        // Arrange
+        UserIntent intent = UserIntent.builder()
+            .intentId("PAYMENT_INQUIRY")
+            .category("PAYMENT")
+            .entities(new ArrayList<>())
+            .build();
+
+        // Act
+        String response = intentResponseService.generateResponse(intent, mockUserContext);
+
+        // Assert
+        assertThat(response).isNotNull();
+        assertThat(response).contains("5,000.00 THB");
+        assertThat(response).contains("due on");
+        assertThat(response).contains("minimum payment");
+    }
+
+    @Test
+    @DisplayName("Should generate payment inquiry response for overdue balance")
+    void shouldGeneratePaymentInquiryResponseForOverdueBalance() {
+        // Arrange
+        UserContext overdueContext = UserContext.builder()
+            .userId("testUser")
+            .outstandingBalance(new BigDecimal("10000.00"))
+            .dueDate(LocalDate.now().minusDays(10)) // Past due
+            .creditLimit(new BigDecimal("50000.00"))
+            .availableCredit(new BigDecimal("40000.00"))
+            .build();
+
+        UserIntent intent = UserIntent.builder()
+            .intentId("PAYMENT_INQUIRY")
+            .category("PAYMENT")
+            .entities(new ArrayList<>())
+            .build();
+
+        // Act
+        String response = intentResponseService.generateResponse(intent, overdueContext);
+
+        // Assert
+        assertThat(response).isNotNull();
+        assertThat(response).contains("10,000.00 THB");
+        assertThat(response).contains("was due on");
+        assertThat(response).contains("late fees");
+        assertThat(response).contains("as soon as possible");
+    }
+
+    @Test
+    @DisplayName("Should generate payment inquiry response for zero balance")
+    void shouldGeneratePaymentInquiryResponseForZeroBalance() {
+        // Arrange
+        UserContext zeroBalanceContext = UserContext.builder()
+            .userId("testUser")
+            .outstandingBalance(BigDecimal.ZERO)
+            .dueDate(LocalDate.now().plusDays(15))
+            .creditLimit(new BigDecimal("50000.00"))
+            .availableCredit(new BigDecimal("50000.00"))
+            .build();
+
+        UserIntent intent = UserIntent.builder()
+            .intentId("PAYMENT_INQUIRY")
+            .category("PAYMENT")
+            .entities(new ArrayList<>())
+            .build();
+
+        // Act
+        String response = intentResponseService.generateResponse(intent, zeroBalanceContext);
+
+        // Assert
+        assertThat(response).isNotNull();
+        assertThat(response).contains("Great news!");
+        assertThat(response).contains("zero balance");
+        assertThat(response).contains("next statement");
+    }
+
+    @Test
+    @DisplayName("Should generate transaction dispute response with security measures")
+    void shouldGenerateTransactionDisputeResponseWithSecurityMeasures() {
+        // Arrange
+        UserIntent intent = UserIntent.builder()
+            .intentId("TRANSACTION_DISPUTE")
+            .category("TRANSACTION")
+            .entities(Arrays.asList(
+                UserIntent.IntentEntity.builder()
+                    .entityType("MERCHANT")
+                    .entityValue("Amazon")
+                    .build(),
+                UserIntent.IntentEntity.builder()
+                    .entityType("AMOUNT")
+                    .entityValue("150.00")
+                    .build()
+            ))
+            .build();
+
+        // Act
+        String response = intentResponseService.generateResponse(intent, mockUserContext);
+
+        // Assert
+        assertThat(response).isNotNull();
+        assertThat(response).contains("dispute a transaction");
+        assertThat(response).contains("Amazon");
+        assertThat(response).contains("150.00 THB");
+        assertThat(response).contains("blocking your card");
+        assertThat(response).contains("dispute case");
+        assertThat(response).contains("provisional credit");
+        assertThat(response).contains("new card");
+    }
+
+    @Test
+    @DisplayName("Should generate card management response for blocking")
+    void shouldGenerateCardManagementResponseForBlocking() {
+        // Arrange
+        UserIntent intent = UserIntent.builder()
+            .intentId("CARD_MANAGEMENT")
+            .category("ACCOUNT")
+            .entities(Arrays.asList(
+                UserIntent.IntentEntity.builder()
+                    .entityType("ACTION")
+                    .entityValue("block")
+                    .build()
+            ))
+            .build();
+
+        // Act
+        String response = intentResponseService.generateResponse(intent, mockUserContext);
+
+        // Assert
+        assertThat(response).isNotNull();
+        assertThat(response).contains("immediately blocked");
+        assertThat(response).contains("replacement card");
+        assertThat(response).contains("1-2 business days");
+        assertThat(response).contains("Reference number: BLK-");
+    }
+
+    @Test
+    @DisplayName("Should generate card management response for activation")
+    void shouldGenerateCardManagementResponseForActivation() {
+        // Arrange
+        UserIntent intent = UserIntent.builder()
+            .intentId("CARD_MANAGEMENT")
+            .category("ACCOUNT")
+            .entities(Arrays.asList(
+                UserIntent.IntentEntity.builder()
+                    .entityType("ACTION")
+                    .entityValue("activate")
+                    .build()
+            ))
+            .build();
+
+        // Act
+        String response = intentResponseService.generateResponse(intent, mockUserContext);
+
+        // Assert
+        assertThat(response).isNotNull();
+        assertThat(response).contains("activate your new card");
+        assertThat(response).contains("last 4 digits");
+        assertThat(response).contains("3-digit security code");
+        assertThat(response).contains("old card will be automatically deactivated");
+    }
+
+    @Test
+    @DisplayName("Should generate credit limit response with current limit info")
+    void shouldGenerateCreditLimitResponseWithCurrentLimitInfo() {
+        // Arrange
+        UserIntent intent = UserIntent.builder()
+            .intentId("CREDIT_LIMIT")
+            .category("ACCOUNT")
+            .entities(Arrays.asList(
+                UserIntent.IntentEntity.builder()
+                    .entityType("REQUESTED_AMOUNT")
+                    .entityValue("100000")
+                    .build()
+            ))
+            .build();
+
+        // Act
+        String response = intentResponseService.generateResponse(intent, mockUserContext);
+
+        // Assert
+        assertThat(response).isNotNull();
+        assertThat(response).contains("50,000.00 THB");
+        assertThat(response).contains("45,000.00 THB available");
+        assertThat(response).contains("100000 THB");
+        assertThat(response).contains("eligible for a credit limit increase");
+        assertThat(response).contains("2-3 business days");
+    }
+
+    @Test
+    @DisplayName("Should generate account security response with immediate actions")
+    void shouldGenerateAccountSecurityResponseWithImmediateActions() {
+        // Arrange
+        UserIntent intent = UserIntent.builder()
+            .intentId("ACCOUNT_SECURITY")
+            .category("SECURITY")
+            .entities(new ArrayList<>())
+            .build();
+
+        // Act
+        String response = intentResponseService.generateResponse(intent, mockUserContext);
+
+        // Assert
+        assertThat(response).isNotNull();
+        assertThat(response).contains("🚨 SECURITY ALERT");
+        assertThat(response).contains("immediately locked");
+        assertThat(response).contains("fraud team");
+        assertThat(response).contains("30 minutes");
+        assertThat(response).contains("SEC-");
+        assertThat(response).contains("registered phone number");
+    }
+
+    @Test
+    @DisplayName("Should generate statement inquiry response with options")
+    void shouldGenerateStatementInquiryResponseWithOptions() {
+        // Arrange
+        UserIntent intent = UserIntent.builder()
+            .intentId("STATEMENT_INQUIRY")
+            .category("ACCOUNT")
+            .entities(Arrays.asList(
+                UserIntent.IntentEntity.builder()
+                    .entityType("MONTH")
+                    .entityValue("january")
+                    .build()
+            ))
+            .build();
+
+        // Act
+        String response = intentResponseService.generateResponse(intent, mockUserContext);
+
+        // Assert
+        assertThat(response).isNotNull();
+        assertThat(response).contains("statement and transaction history");
+        assertThat(response).contains("january's statement");
+        assertThat(response).contains("past 24 months");
+        assertThat(response).contains("Email your latest statement");
+        assertThat(response).contains("Show recent transactions");
+        assertThat(response).contains("custom date range");
+        assertThat(response).contains("automatic monthly statement");
+    }
+
+    @Test
+    @DisplayName("Should generate reward points response with balance and options")
+    void shouldGenerateRewardPointsResponseWithBalanceAndOptions() {
+        // Arrange
+        UserIntent intent = UserIntent.builder()
+            .intentId("REWARD_POINTS")
+            .category("REWARDS")
+            .entities(new ArrayList<>())
+            .build();
+
+        // Act
+        String response = intentResponseService.generateResponse(intent, mockUserContext);
+
+        // Assert
+        assertThat(response).isNotNull();
+        assertThat(response).contains("reward points balance");
+        assertThat(response).contains("points");
+        assertThat(response).contains("THB");
+        assertThat(response).contains("Cash Back");
+        assertThat(response).contains("Shopping");
+        assertThat(response).contains("Travel");
+        assertThat(response).contains("Gifts");
+        assertThat(response).contains("earned");
+        assertThat(response).contains("this month");
+    }
+
+    @Test
+    @DisplayName("Should generate technical support response with troubleshooting steps")
+    void shouldGenerateTechnicalSupportResponseWithTroubleshootingSteps() {
+        // Arrange
+        UserIntent intent = UserIntent.builder()
+            .intentId("TECHNICAL_SUPPORT")
+            .category("SUPPORT")
+            .entities(new ArrayList<>())
+            .build();
+
+        // Act
+        String response = intentResponseService.generateResponse(intent, mockUserContext);
+
+        // Assert
+        assertThat(response).isNotNull();
+        assertThat(response).contains("technical difficulties");
+        assertThat(response).contains("troubleshoot");
+        assertThat(response).contains("Clear your browser cache");
+        assertThat(response).contains("internet connection");
+        assertThat(response).contains("different browser");
+        assertThat(response).contains("Update the app");
+        assertThat(response).contains("Reset your login credentials");
+        assertThat(response).contains("technical support team");
+    }
+
+    @Test
+    @DisplayName("Should generate unrecognized inquiry response with help options")
+    void shouldGenerateUnrecognizedInquiryResponseWithHelpOptions() {
+        // Arrange
+        UserIntent intent = UserIntent.builder()
+            .intentId("UNRECOGNIZED_INQUIRY")
+            .category("SUPPORT")
+            .entities(new ArrayList<>())
+            .build();
+
+        // Act
+        String response = intentResponseService.generateResponse(intent, mockUserContext);
+
+        // Assert
+        assertThat(response).isNotNull();
+        assertThat(response).contains("didn't quite understand");
+        assertThat(response).contains("Account & Payments");
+        assertThat(response).contains("Security");
+        assertThat(response).contains("Statements");
+        assertThat(response).contains("Credit");
+        assertThat(response).contains("Rewards");
+        assertThat(response).contains("Support");
+        assertThat(response).contains("rephrase your question");
+    }
+
+    @Test
+    @DisplayName("Should generate general inquiry response with service overview")
+    void shouldGenerateGeneralInquiryResponseWithServiceOverview() {
+        // Arrange
+        UserIntent intent = UserIntent.builder()
+            .intentId("GENERAL_INQUIRY")
+            .category("SUPPORT")
+            .entities(new ArrayList<>())
+            .build();
+
+        // Act
+        String response = intentResponseService.generateResponse(intent, mockUserContext);
+
+        // Assert
+        assertThat(response).isNotNull();
+        assertThat(response).contains("here to help");
+        assertThat(response).contains("credit card needs");
+        assertThat(response).contains("Account & Payments");
+        assertThat(response).contains("Security");
+        assertThat(response).contains("What would you like help with today?");
+    }
+
+    @Test
+    @DisplayName("Should handle unknown intent gracefully")
+    void shouldHandleUnknownIntentGracefully() {
+        // Arrange
+        UserIntent intent = UserIntent.builder()
+            .intentId("UNKNOWN_INTENT")
+            .category("UNKNOWN")
+            .entities(new ArrayList<>())
+            .build();
+
+        // Act
+        String response = intentResponseService.generateResponse(intent, mockUserContext);
+
+        // Assert
+        assertThat(response).isNotNull();
+        assertThat(response).contains("didn't quite understand");
+    }
+
+    @Test
+    @DisplayName("Should use fallback user context when none provided")
+    void shouldUseFallbackUserContextWhenNoneProvided() {
+        // Arrange
+        UserIntent intent = UserIntent.builder()
+            .intentId("PAYMENT_INQUIRY")
+            .category("PAYMENT")
+            .entities(new ArrayList<>())
+            .build();
+
+        when(userDataService.getUserContext("user_overdue")).thenReturn(mockUserContext);
+
+        // Act
+        String response = intentResponseService.generateResponse(intent, null);
+
+        // Assert
+        assertThat(response).isNotNull();
+        assertThat(response).contains("5,000.00 THB");
+    }
+}

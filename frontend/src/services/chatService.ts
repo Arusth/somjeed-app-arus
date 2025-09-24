@@ -47,24 +47,26 @@ class ChatService {
       };
       const response = await this.api.post<ChatResponse>('/message', request);
       return response.data;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error sending message:', error);
       
       // Provide more detailed error information
-      if (error.response) {
+      const axiosError = error as { response?: { status: number; statusText: string; data: unknown }; request?: unknown };
+      if (axiosError?.response) {
         // Server responded with error status
-        const status = error.response.status;
-        const statusText = error.response.statusText;
-        console.error(`HTTP ${status}: ${statusText}`, error.response.data);
+        const status = axiosError.response.status;
+        const statusText = axiosError.response.statusText;
+        console.error(`HTTP ${status}: ${statusText}`, axiosError.response.data);
         throw new Error(`Server error (${status}): ${statusText}`);
-      } else if (error.request) {
+      } else if (axiosError?.request) {
         // Request was made but no response received
-        console.error('No response received:', error.request);
+        console.error('No response received:', axiosError.request);
         throw new Error('No response from server. Please check your connection.');
       } else {
         // Something else happened
-        console.error('Request setup error:', error.message);
-        throw new Error(`Request failed: ${error.message}`);
+        const message = error instanceof Error ? error.message : 'An unexpected error occurred';
+        console.error('Request setup error:', message);
+        throw new Error(`Request failed: ${message}`);
       }
     }
   }
@@ -111,11 +113,12 @@ class ChatService {
     try {
       const response = await this.feedbackApi.post<FeedbackSubmissionResponse>('/submit', feedback);
       return response.data;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error submitting feedback:', error);
       
-      if (error.response?.status === 400) {
-        throw new Error(error.response.data?.message || 'Invalid feedback data');
+      const axiosError = error as { response?: { status: number; statusText: string; data?: { message?: string } }; request?: unknown };
+      if (axiosError?.response?.status === 400) {
+        throw new Error(axiosError.response.data?.message || 'Invalid feedback data');
       }
       
       throw new Error('Failed to submit feedback. Please try again.');
@@ -132,8 +135,9 @@ class ChatService {
     try {
       const response = await this.feedbackApi.post<ConversationClosureResponse>('/silence', request);
       return response.data;
-    } catch (error: any) {
-      if (error.response?.status === 204) {
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { status: number; statusText: string; data: unknown }; request?: unknown };
+      if (axiosError?.response?.status === 204) {
         // No content - no action needed yet
         return null;
       }

@@ -66,6 +66,31 @@ export default function AboutPage() {
               </CardContent>
             </Card>
           </div>
+
+          {/* High-Level Architecture Diagram */}
+          <div className="mb-12">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-center">
+                  <span className="text-2xl mr-3">🏗️</span>
+                  High-Level System Architecture
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex justify-center">
+                  <img 
+                    src="/architecture-diagram.png" 
+                    alt="Somjeed ChatBot Architecture - Frontend Layer (Next.js 15 + TypeScript) connecting to Backend Layer (Spring Boot 3.2.0 + Java 17) through RESTful API Communication"
+                    className="max-w-full h-auto rounded-lg shadow-lg border border-gray-200"
+                    style={{ maxHeight: '600px' }}
+                  />
+                </div>
+                <p className="text-center text-sm text-gray-500 mt-4">
+                  Complete system architecture showing Frontend Layer, API Communication, and Backend Layer with data flow
+                </p>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </section>
 
@@ -121,7 +146,7 @@ export default function AboutPage() {
       </section>
 
       {/* Core Features */}
-      <section className="py-12 px-4 bg-white">
+      <section className="py-12 px-4 bg-white text-gray-600">
         <div className="container mx-auto max-w-6xl">
           <h2 className="text-3xl font-bold text-center text-gray-800 mb-12">
             Core Features Integration
