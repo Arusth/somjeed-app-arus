@@ -1,5 +1,13 @@
 import axios from 'axios';
-import type { ChatRequest, ChatResponse, GreetingResponse } from '@/types/chat';
+import type { 
+  ChatRequest, 
+  ChatResponse, 
+  GreetingResponse, 
+  FeedbackRequest, 
+  FeedbackSubmissionResponse,
+  ConversationClosureRequest,
+  ConversationClosureResponse
+} from '@/types/chat';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
@@ -16,15 +24,27 @@ class ChatService {
     timeout: 10000, // 10 second timeout
   });
 
+  private readonly feedbackApi = axios.create({
+    baseURL: `${API_BASE_URL}/api/feedback`,
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    timeout: 10000,
+  });
+
   /**
    * Send a chat message to the backend
    * 
    * @param message User message content
+   * @param sessionId Optional session ID for context tracking
    * @returns Promise<ChatResponse> Bot response
    */
-  async sendMessage(message: string): Promise<ChatResponse> {
+  async sendMessage(message: string, sessionId?: string): Promise<ChatResponse> {
     try {
-      const request: ChatRequest = { message };
+      const request: ChatRequest = { 
+        message,
+        ...(sessionId && { sessionId })
+      };
       const response = await this.api.post<ChatResponse>('/message', request);
       return response.data;
     } catch (error: any) {
@@ -78,6 +98,62 @@ class ChatService {
     } catch (error) {
       console.error('Error checking health:', error);
       throw new Error('Failed to check service health');
+    }
+  }
+
+  /**
+   * Submit user feedback
+   * 
+   * @param feedback FeedbackRequest object
+   * @returns Promise<FeedbackSubmissionResponse> Submission result
+   */
+  async submitFeedback(feedback: FeedbackRequest): Promise<FeedbackSubmissionResponse> {
+    try {
+      const response = await this.feedbackApi.post<FeedbackSubmissionResponse>('/submit', feedback);
+      return response.data;
+    } catch (error: any) {
+      console.error('Error submitting feedback:', error);
+      
+      if (error.response?.status === 400) {
+        throw new Error(error.response.data?.message || 'Invalid feedback data');
+      }
+      
+      throw new Error('Failed to submit feedback. Please try again.');
+    }
+  }
+
+  /**
+   * Handle user silence and get conversation closure guidance
+   * 
+   * @param request ConversationClosureRequest object
+   * @returns Promise<ConversationClosureResponse | null> Closure guidance or null if no action needed
+   */
+  async handleSilence(request: ConversationClosureRequest): Promise<ConversationClosureResponse | null> {
+    try {
+      const response = await this.feedbackApi.post<ConversationClosureResponse>('/silence', request);
+      return response.data;
+    } catch (error: any) {
+      if (error.response?.status === 204) {
+        // No content - no action needed yet
+        return null;
+      }
+      
+      console.error('Error handling silence:', error);
+      throw new Error('Failed to process silence detection');
+    }
+  }
+
+  /**
+   * Reset user activity (called when user sends a message)
+   * 
+   * @param sessionId Session ID to reset activity for
+   */
+  async resetActivity(sessionId: string): Promise<void> {
+    try {
+      await this.feedbackApi.post(`/activity/${sessionId}`);
+    } catch (error) {
+      console.error('Error resetting activity:', error);
+      // Don't throw error as this is not critical
     }
   }
 }

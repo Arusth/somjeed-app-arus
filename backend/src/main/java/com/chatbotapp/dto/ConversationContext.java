@@ -55,4 +55,5 @@ public class ConversationContext {
     public static final String DUPLICATE_REPORT_CONFIRMATION = "DUPLICATE_REPORT_CONFIRMATION";
     public static final String STATEMENT_REQUEST = "STATEMENT_REQUEST";
     public static final String SECURITY_PHONE_CONFIRMATION = "SECURITY_PHONE_CONFIRMATION";
+    public static final String FURTHER_ASSISTANCE = "FURTHER_ASSISTANCE";
 }

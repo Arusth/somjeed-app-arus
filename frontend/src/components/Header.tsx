@@ -14,10 +14,7 @@ export default function Header() {
               Home
             </a>
             <a href="#" className="text-gray-600 hover:text-primary-600 transition-colors">
-              About
-            </a>
-            <a href="#" className="text-gray-600 hover:text-primary-600 transition-colors">
-              Contact
+              About This Project
             </a>
           </nav>
         </div>

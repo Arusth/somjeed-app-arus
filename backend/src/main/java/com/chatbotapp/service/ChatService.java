@@ -43,8 +43,7 @@ public class ChatService {
     }
 
     /**
-     * Process user message and generate appropriate bot response
-     * Detects greeting messages and provides contextual responses
+     * Process chat message and generate appropriate response
      * 
      * @param request ChatRequest containing user message
      * @return ChatResponse with bot reply
@@ -57,12 +56,13 @@ public class ChatService {
         chatMessageRepository.save(userMessage);
 
         // Generate bot response based on message content
-        String botResponseText = generateResponse(request.getMessage());
+        // Use sessionId as userId if available for context tracking
+        String userId = request.getSessionId() != null ? request.getSessionId() : "default_user";
+        String botResponseText = generateResponse(request.getMessage(), userId);
         
         // Save bot response
         ChatMessage botMessage = createBotMessage(botResponseText);
         chatMessageRepository.save(botMessage);
-
         return ChatResponse.builder()
             .message(botResponseText)
             .timestamp(botMessage.getTimestamp())
@@ -118,8 +118,13 @@ public class ChatService {
      * @return Bot response text
      */
     private String generateResponse(String userMessage) {
-        // Default user ID for demo (in production, get from session/auth)
-        String userId = "default_user";
+        return generateResponse(userMessage, "default_user");
+    }
+    
+    /**
+     * Generate response with specific user ID (used for session-based context)
+     */
+    private String generateResponse(String userMessage, String userId) {
         
         // Check if this is a greeting message
         if (greetingService.isGreetingMessage(userMessage)) {
@@ -307,6 +312,23 @@ public class ChatService {
                     return "I understand your phone number may have changed. For security purposes, " +
                            "please visit any of our branches with valid ID to update your contact information. " +
                            "In the meantime, your account remains secured.";
+                }
+                break;
+                
+            case ConversationContext.FURTHER_ASSISTANCE:
+                if (isPositive) {
+                    return "I'm here to help with whatever you need. You can ask me about:\n\n" +
+                           "• Account & Payments: Check balance, due dates, payment options\n" +
+                           "• Security: Report fraud, block cards, dispute transactions\n" +
+                           "• Statements: Transaction history, monthly statements\n" +
+                           "• Credit: Limit increases, available credit\n" +
+                           "• Rewards: Points balance, redemption options\n" +
+                           "• Support: Technical issues, account access\n\n" +
+                           "What would you like to know about?";
+                } else if (isNegative) {
+                    return "Perfect! It looks like you have everything you need. " +
+                           "Thank you for using our service today. " +
+                           "Feel free to reach out anytime if you have questions. Have a great day!";
                 }
                 break;
         }

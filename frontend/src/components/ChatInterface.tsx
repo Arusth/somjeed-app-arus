@@ -1,13 +1,21 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { chatService } from '@/services/chatService';
 import MessageBubble from './MessageBubble';
 import MessageInput from './MessageInput';
 import LoadingIndicator from './LoadingIndicator';
 import GreetingMessage from './GreetingMessage';
 import IntentPredictionBubble from './IntentPredictionBubble';
-import type { ChatMessage, BotProfile, IntentPrediction } from '@/types/chat';
+import FeedbackModal from './FeedbackModal';
+import useSilenceTracker from '@/hooks/useSilenceTracker';
+import type { 
+  ChatMessage, 
+  BotProfile, 
+  IntentPrediction, 
+  ConversationClosureResponse,
+  FeedbackRequest 
+} from '@/types/chat';
 
 interface Message {
   id: string;
@@ -22,7 +30,18 @@ export default function ChatInterface() {
   const [showGreeting, setShowGreeting] = useState(true);
   const [intentPredictions, setIntentPredictions] = useState<IntentPrediction[]>([]);
   const [showIntentPredictions, setShowIntentPredictions] = useState(false);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [conversationStartedAt] = useState(new Date());
+  const [sessionId, setSessionId] = useState<string>('');
+  const [isClient, setIsClient] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const hasUserStartedChatting = useRef<boolean>(false);
+
+  // Generate sessionId only on client side to avoid hydration mismatch
+  useEffect(() => {
+    setSessionId(`session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
+    setIsClient(true);
+  }, []);
 
   // Bot profile configuration
   const botProfile: BotProfile = {
@@ -31,7 +50,7 @@ export default function ChatInterface() {
     color: '#22c55e'
   };
 
-  const scrollToBottom = () => {
+  const scrollToBottom = useCallback(() => {
     setTimeout(() => {
       if (messagesEndRef.current) {
         messagesEndRef.current.scrollIntoView({ 
@@ -41,23 +60,57 @@ export default function ChatInterface() {
         });
       }
     }, 100);
-  }
+  }, []);
+
+  // Handle silence-triggered actions (defined first to avoid circular dependency)
+  const handleSilenceAction = useCallback((response: ConversationClosureResponse) => {
+    const botMessage: Message = {
+      id: `silence_${Date.now()}`,
+      text: response.message,
+      sender: 'bot',
+      timestamp: new Date()
+    };
+
+    setMessages(prev => [...prev, botMessage]);
+    
+    if (response.shouldRequestFeedback) {
+      // Show feedback modal after a short delay
+      setTimeout(() => {
+        setShowFeedbackModal(true);
+      }, 2000);
+    }
+    
+    scrollToBottom();
+  }, [scrollToBottom]);
+
+  // Silence tracking for conversation closure (only when client-side and sessionId is ready)
+  const { silenceTracker, resetActivity, pauseTracking, resumeTracking } = useSilenceTracker({
+    sessionId,
+    userId: 'user_overdue', // This should come from user context
+    conversationTopic: 'payment_inquiry',
+    messageCount: messages.length,
+    isEnabled: isClient && sessionId !== '', // Enable tracking only when client-side and sessionId is ready
+    onSilenceAction: handleSilenceAction
+  });
 
   useEffect(() => {
     scrollToBottom()
-  }, [messages, showIntentPredictions])
+  }, [messages, showIntentPredictions, scrollToBottom])
 
   // Handle greeting loaded callback to show intent predictions
   const handleGreetingLoaded = (greetingData: any) => {
     if (greetingData && greetingData.intentPredictions && greetingData.intentPredictions.length > 0) {
       // Show intent predictions after a short delay for better UX
       setTimeout(() => {
-        const highPriorityIntents = greetingData.intentPredictions
-          .filter((intent: IntentPrediction) => intent.showAfterGreeting)
-          .slice(0, 1); // Show only the top priority intent
-        
-        setIntentPredictions(highPriorityIntents);
-        setShowIntentPredictions(true);
+        // Only show intent predictions if user hasn't started chatting yet
+        if (!hasUserStartedChatting.current) {
+          const highPriorityIntents = greetingData.intentPredictions
+            .filter((intent: IntentPrediction) => intent.showAfterGreeting)
+            .slice(0, 1); // Show only the top priority intent
+          
+          setIntentPredictions(highPriorityIntents);
+          setShowIntentPredictions(true);
+        }
       }, 1500); // 1.5 second delay after greeting
     }
   };
@@ -65,8 +118,25 @@ export default function ChatInterface() {
   const handleSendMessage = async (text: string) => {
     if (!text.trim()) return;
 
-    // Keep greeting visible, only hide intent predictions when user starts chatting
-    if (showIntentPredictions) {
+    // Mark that user has started chatting
+    hasUserStartedChatting.current = true;
+
+    // Reset silence tracking when user sends a message
+    resetActivity();
+
+    // Convert intent predictions to regular messages before hiding them
+    if (showIntentPredictions && intentPredictions.length > 0) {
+      const intentMessages: Message[] = intentPredictions.map((intent, index) => ({
+        id: `intent_${Date.now()}_${index}`,
+        text: intent.suggestedMessage,
+        sender: 'bot' as const,
+        timestamp: new Date(Date.now() - (intentPredictions.length - index) * 100) // Slightly stagger timestamps
+      }));
+      
+      // Add intent predictions as regular messages first
+      setMessages(prev => [...prev, ...intentMessages]);
+      
+      // Then hide the intent prediction bubbles
       setShowIntentPredictions(false);
     }
 
@@ -88,8 +158,8 @@ export default function ChatInterface() {
       // Simulate a slight delay for better UX
       await new Promise(resolve => setTimeout(resolve, 500));
       
-      // Send message to backend
-      const response = await chatService.sendMessage(text.trim());
+      // Send message to backend with sessionId for context tracking
+      const response = await chatService.sendMessage(text.trim(), sessionId);
       
       // Add bot response with animation delay
       setTimeout(() => {
@@ -125,6 +195,38 @@ export default function ChatInterface() {
       }, 300);
     }
   };
+
+  // Handle feedback submission
+  const handleFeedbackSubmit = useCallback(async (feedback: FeedbackRequest) => {
+    try {
+      const response = await chatService.submitFeedback(feedback);
+      
+      // Add bot response thanking for feedback
+      const thankYouMessage: Message = {
+        id: `feedback_thanks_${Date.now()}`,
+        text: response.message,
+        sender: 'bot',
+        timestamp: new Date()
+      };
+      
+      setMessages(prev => [...prev, thankYouMessage]);
+      setShowFeedbackModal(false);
+      
+      // End conversation tracking
+      pauseTracking();
+      
+      scrollToBottom();
+    } catch (error) {
+      console.error('Failed to submit feedback:', error);
+      // Keep modal open on error so user can try again
+    }
+  }, [pauseTracking, scrollToBottom]);
+
+  // Handle feedback modal close
+  const handleFeedbackModalClose = useCallback(() => {
+    setShowFeedbackModal(false);
+    resumeTracking(); // Resume tracking if user closes without submitting
+  }, [resumeTracking]);
 
   return (
     <div className="bg-white rounded-lg shadow-lg overflow-hidden transition-all duration-300 ease-in-out hover:shadow-xl h-full flex flex-col">
@@ -180,6 +282,7 @@ export default function ChatInterface() {
         <div ref={messagesEndRef} />
       </div>
 
+
       {/* Message Input */}
       <div className="flex-shrink-0 border-t border-gray-200 p-4 bg-gray-50 transition-colors duration-200">
         <MessageInput 
@@ -187,6 +290,21 @@ export default function ChatInterface() {
           disabled={isLoading} 
         />
       </div>
+
+      {/* Feedback Modal */}
+      {isClient && sessionId && (
+        <FeedbackModal
+          isOpen={showFeedbackModal}
+          onClose={handleFeedbackModalClose}
+          onSubmit={handleFeedbackSubmit}
+          sessionId={sessionId}
+          userId="user_overdue"
+          conversationTopic="payment_inquiry"
+          conversationStartedAt={conversationStartedAt}
+          messageCount={messages.length}
+          botProfile={botProfile}
+        />
+      )}
     </div>
   );
 }
