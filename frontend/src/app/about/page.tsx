@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import Header from '@/components/Header'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 
@@ -78,9 +79,11 @@ export default function AboutPage() {
               </CardHeader>
               <CardContent>
                 <div className="flex justify-center">
-                  <img 
+                  <Image 
                     src="/architecture-diagram.png" 
                     alt="Somjeed ChatBot Architecture - Frontend Layer (Next.js 15 + TypeScript) connecting to Backend Layer (Spring Boot 3.2.0 + Java 17) through RESTful API Communication"
+                    width={800}
+                    height={600}
                     className="max-w-full h-auto rounded-lg shadow-lg border border-gray-200"
                     style={{ maxHeight: '600px' }}
                   />
@@ -471,18 +474,12 @@ export default function AboutPage() {
           <p className="text-xl mb-8 opacity-90">
             Try our intelligent chatbot and see how it handles credit card customer support with contextual awareness and proactive assistance.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <div className="flex justify-center">
             <Link 
               href="/" 
               className="bg-white text-blue-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors"
             >
               Start Chatting
-            </Link>
-            <Link 
-              href="/demo" 
-              className="border-2 border-white text-white px-8 py-3 rounded-lg font-semibold hover:bg-white hover:text-blue-600 transition-colors"
-            >
-              View Demo
             </Link>
           </div>
         </div>

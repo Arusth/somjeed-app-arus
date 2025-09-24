@@ -8,7 +8,7 @@ import type { BotProfile, IntentPrediction } from '@/types/chat';
 
 interface GreetingMessageProps {
   botProfile?: BotProfile;
-  onGreetingLoaded?: (greetingData: any) => void;
+  onGreetingLoaded?: (greetingData: { intentPredictions?: IntentPrediction[] }) => void;
   autoFetch?: boolean;
   className?: string;
   userId?: string;
@@ -98,7 +98,7 @@ export const GreetingMessage: FC<GreetingMessageProps> = ({
             </span>
           </div>
           <p className="text-sm text-red-700 leading-relaxed">
-            Sorry, I couldn't prepare a greeting right now. 
+            Sorry, I couldn&rsquo;t prepare a greeting right now. 
           </p>
           <div className="flex items-center space-x-2 mt-2">
             <button
@@ -175,7 +175,7 @@ export const GreetingMessage: FC<GreetingMessageProps> = ({
           </span>
         </div>
         <p className="text-sm text-gray-600 leading-relaxed">
-          Hello! I'm ready to help you today.
+          Hello! I&rsquo;m ready to help you today.
         </p>
         <button
           onClick={handleRefreshClick}
@@ -191,10 +191,13 @@ export const GreetingMessage: FC<GreetingMessageProps> = ({
 /**
  * IntentPredictionCard component displays a predicted intent with suggested actions
  */
+/* Unused interface - keeping for future use
 interface IntentPredictionCardProps {
   intent: IntentPrediction;
 }
+*/
 
+/* Unused component - keeping for future use
 const IntentPredictionCard: FC<IntentPredictionCardProps> = ({ intent }) => {
   const getPriorityColor = (priority: string) => {
     switch (priority.toLowerCase()) {
@@ -242,6 +245,7 @@ const IntentPredictionCard: FC<IntentPredictionCardProps> = ({ intent }) => {
     </div>
   );
 };
+*/
 
 /**
  * Get weather emoji based on condition

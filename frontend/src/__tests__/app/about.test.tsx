@@ -83,15 +83,12 @@ describe('AboutPage', () => {
   test('should render call to action section', () => {
     expect(screen.getByText('Experience Somjeed in Action')).toBeInTheDocument()
     expect(screen.getByText('Start Chatting')).toBeInTheDocument()
-    expect(screen.getByText('View Demo')).toBeInTheDocument()
   })
 
-  test('should have proper navigation links in CTA section', () => {
+  test('should have proper navigation link in CTA section', () => {
     const startChattingLink = screen.getByText('Start Chatting').closest('a')
-    const viewDemoLink = screen.getByText('View Demo').closest('a')
     
     expect(startChattingLink).toHaveAttribute('href', '/')
-    expect(viewDemoLink).toHaveAttribute('href', '/demo')
   })
 
   test('should display all 8 intent recognition cards', () => {

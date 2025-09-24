@@ -10,7 +10,6 @@ import IntentPredictionBubble from './IntentPredictionBubble';
 import FeedbackModal from './FeedbackModal';
 import useSilenceTracker from '@/hooks/useSilenceTracker';
 import type { 
-  ChatMessage, 
   BotProfile, 
   IntentPrediction, 
   ConversationClosureResponse,
@@ -27,7 +26,7 @@ interface Message {
 export default function ChatInterface() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [showGreeting, setShowGreeting] = useState(true);
+  const [showGreeting] = useState(true);
   const [intentPredictions, setIntentPredictions] = useState<IntentPrediction[]>([]);
   const [showIntentPredictions, setShowIntentPredictions] = useState(false);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
@@ -84,7 +83,7 @@ export default function ChatInterface() {
   }, [scrollToBottom]);
 
   // Silence tracking for conversation closure (only when client-side and sessionId is ready)
-  const { silenceTracker, resetActivity, pauseTracking, resumeTracking } = useSilenceTracker({
+  const { resetActivity, pauseTracking, resumeTracking } = useSilenceTracker({
     sessionId,
     userId: 'user_overdue', // This should come from user context
     conversationTopic: 'payment_inquiry',
@@ -98,13 +97,13 @@ export default function ChatInterface() {
   }, [messages, showIntentPredictions, scrollToBottom])
 
   // Handle greeting loaded callback to show intent predictions
-  const handleGreetingLoaded = (greetingData: any) => {
+  const handleGreetingLoaded = (greetingData: { intentPredictions?: IntentPrediction[] }) => {
     if (greetingData && greetingData.intentPredictions && greetingData.intentPredictions.length > 0) {
       // Show intent predictions after a short delay for better UX
       setTimeout(() => {
         // Only show intent predictions if user hasn't started chatting yet
         if (!hasUserStartedChatting.current) {
-          const highPriorityIntents = greetingData.intentPredictions
+          const highPriorityIntents = (greetingData.intentPredictions || [])
             .filter((intent: IntentPrediction) => intent.showAfterGreeting)
             .slice(0, 1); // Show only the top priority intent
           
@@ -244,7 +243,7 @@ export default function ChatInterface() {
         )}
 
         {/* Show intent predictions as separate bubbles */}
-        {showIntentPredictions && intentPredictions.map((intent, index) => (
+        {showIntentPredictions && intentPredictions.map((intent) => (
           <IntentPredictionBubble
             key={intent.intentId}
             intent={intent}

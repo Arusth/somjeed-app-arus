@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { GreetingMessage } from '@/components/GreetingMessage';
 import { useGreeting } from '@/hooks/useGreeting';
 import type { GreetingResponse, BotProfile } from '@/types/chat';

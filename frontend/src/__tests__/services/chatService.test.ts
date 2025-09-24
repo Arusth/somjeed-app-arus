@@ -26,7 +26,7 @@ describe('ChatService', () => {
       post: jest.fn(),
       get: jest.fn(),
     };
-    mockedAxios.create.mockReturnValue(mockAxiosInstance as any);
+    mockedAxios.create.mockReturnValue(mockAxiosInstance as unknown as jest.Mocked<typeof axios>);
   });
 
   describe('sendMessage', () => {

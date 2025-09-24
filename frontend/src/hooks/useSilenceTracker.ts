@@ -143,7 +143,7 @@ export const useSilenceTracker = ({
     } catch (error) {
       console.error('Error handling silence check:', error);
     }
-  }, [sessionId, userId, conversationTopic, messageCount, onSilenceAction]);
+  }, [sessionId, userId, conversationTopic, messageCount, onSilenceAction, silenceTracker.lastActivityAt]);
 
   /**
    * Main silence tracking effect
